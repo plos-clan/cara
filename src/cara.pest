@@ -1,0 +1,33 @@
+comp_unit = { soi ~ (const_decl)* ~ eoi }
+soi       = { SOI }
+eoi       = { EOI }
+
+type_enum = { ("u64") }
+types      = { (star)* ~ type_enum }
+star = { "*" }
+
+block = { "{" ~ "}" }
+
+const_decl = {
+    "const" ~ ident ~ "=" ~ const_initial_value ~ ";"
+}
+
+const_initial_value = { function_def }
+
+function_def = {
+    ("fn" ~ "(" ~ ")" ~ types ~ block | "fn" ~ "(" ~ param ~ ("," ~ param)* ~ ","? ~ ")" ~ types ~ block)
+}
+param     = { ident ~ ":" ~ types }
+
+WHITESPACE = _{ " " | "\t" | "\n" }
+ident = @{ ((ALPHABETIC | NUMBER)+ | "@"~string) }
+string     = ${ "\"" ~ inner ~ "\"" }
+inner      = @{ char* }
+char       =  {
+    !("\"" | "\\") ~ ANY
+  | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+  | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+//number     = @{
+//    "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+//}
