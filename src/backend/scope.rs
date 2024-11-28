@@ -1,10 +1,13 @@
 use std::collections::VecDeque;
 
-use super::Value;
+use super::*;
+
+use inkwell::values::PointerValue;
 
 #[derive(Debug, Clone)]
 pub enum Symbol<'sym> {
     Const(String, Value<'sym>),
+    Varible(String, PointerValue<'sym>,  BackendType<'sym>),
 }
 
 
@@ -35,6 +38,7 @@ impl<'sym> SymbolTable<'sym> {
     pub fn get(&self, name: &str) -> Option<&Symbol<'sym>> {
         self.stack.iter().find(|symbol| match symbol {
             Symbol::Const(n, _) => n == name,
+            Symbol::Varible(n, _, _) => n == name,
         })
     }
 }

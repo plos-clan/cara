@@ -4,7 +4,7 @@
 * @author  :   zzjcarrot
 */
 
-use std::{cell::RefCell, io::Read, path::Path, rc::Rc, sync::{Arc, RwLock}};
+use std::{io::Read, path::Path, sync::{Arc, RwLock}};
 
 use argh::FromArgs;
 use cara::backend::GenerateProgramTwice;
@@ -76,7 +76,7 @@ fn main() {
     unit.implement(gen.clone()).unwrap();
 
     for error in gen.read().unwrap().errors.iter() {
-        println!("{:?}", error);
+        println!("{}", error);
     }
     if gen.read().unwrap().errors.len() > 0 {
         return;

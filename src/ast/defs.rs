@@ -1,4 +1,4 @@
-use super::{Block, Span, Type};
+use super::*;
 
 #[derive(Debug)]
 pub struct ConstDecl {
@@ -10,6 +10,7 @@ pub struct ConstDecl {
 #[derive(Debug)]
 pub enum ConstInitialValueEnum {
     Function(FunctionDef),
+    Exp(ConstExp),
 }
 
 #[derive(Debug)]

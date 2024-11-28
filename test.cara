@@ -1,3 +1,8 @@
+const @"main ret" = 1+1;
+
+const @"main.return" = 1+1;
+
 const main = fn () u64 {
+    return @"main.ret";
 };
 

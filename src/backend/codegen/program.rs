@@ -34,6 +34,7 @@ impl<'gen> GenerateProgramTwice<'gen> for CompUnit {
     ) -> Result<Self::Out> {
         for global_item in self.global_items.iter() {
             if let Err(error) = global_item.implement(gen.clone()) {
+                let error: CompileError = error.downcast().unwrap();
                 gen.write().unwrap().errors.push(error);
             }
         }
@@ -71,11 +72,12 @@ impl<'gen> GenerateProgramOnce<'gen> for Block {
         &self,
         gen: Arc<RwLock<Generator<'gen>>>,
     ) -> Result<Self::Out> {
-        /*let stack_len = gen.read().unwrap().local.len();
+        let stack_len = gen.read().unwrap().local.len();
 
         for item in self.items.iter() {
             if let Err(err) = item.generate(gen.clone()) {
-                if !(err.0 == ErrorTypes::Terminated) {
+                let err: CompileError = err.downcast().unwrap();
+                if !(err.error == CompileErrorEnum::Terminated) {
                     gen.write().unwrap().errors.push(err);
                     continue;
                 }
@@ -86,19 +88,21 @@ impl<'gen> GenerateProgramOnce<'gen> for Block {
         let mut gen = gen.write().unwrap();
         while gen.local.len() > stack_len {
             gen.local.pop();
-        }*/
+        }
 
         Ok(())
     }
 }
 
-/*impl<'gen> GenerateProgramOnce<'gen> for BlockItem {
+impl<'gen> GenerateProgramOnce<'gen> for BlockItem {
     type Out = ();
 
     fn generate(
         &self,
-        _gen: Arc<RwLock<Generator<'gen>>>,
+        gen: Arc<RwLock<Generator<'gen>>>,
     ) -> Result<Self::Out> {
-        Ok(())
+        match self {
+            Self::Statement(statement) => statement.generate(gen),
+        }
     }
-}*/
+}

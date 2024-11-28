@@ -6,13 +6,15 @@ type_enum = { ("u64") }
 types      = { (star)* ~ type_enum }
 star = { "*" }
 
-block = { "{" ~ "}" }
+block = { "{" ~(stmt)*~ "}" }
+stmt = { (return) }
+return = { "return" ~ (exp)? ~ ";"}
 
 const_decl = {
     "const" ~ ident ~ "=" ~ const_initial_value ~ ";"
 }
 
-const_initial_value = { function_def }
+const_initial_value = { (function_def|const_exp) }
 
 function_def = {
     ("fn" ~ "(" ~ ")" ~ types ~ block | "fn" ~ "(" ~ param ~ ("," ~ param)* ~ ","? ~ ")" ~ types ~ block)
@@ -20,7 +22,7 @@ function_def = {
 param     = { ident ~ ":" ~ types }
 
 WHITESPACE = _{ " " | "\t" | "\n" }
-ident = @{ ((ALPHABETIC | NUMBER)+ | "@"~string) }
+ident = @{ ((ALPHABETIC | NUMBER | "_")+ | "@"~string) }
 string     = ${ "\"" ~ inner ~ "\"" }
 inner      = @{ char* }
 char       =  {
@@ -28,6 +30,27 @@ char       =  {
   | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-//number     = @{
-//    "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
-//}
+
+const_exp =  { exp }
+exp       =  { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ postfix*)* }
+infix     = _{ add | sub | mul | div | mod | eq | neq }
+add       =  { "+" }
+sub       =  { "-" }
+mul       =  { "*" }
+div       =  { "/" }
+mod       =  { "%" }
+eq        =  { "==" }
+neq       =  { "!=" }
+prefix    = _{ neg | pos }
+pos       =  { "+" }
+neg       =  { "-" }
+postfix   = _{ "NOT_IMPLEMENTEDJLOGHjldj;sjefoaw90298" }
+primary   =  _{ deref|("(" ~ exp ~ ")") | number | lval | deref | get_addr }
+
+lval      = { ident }
+deref     = { ("*" ~ lval) | ("*" ~ "(" ~ exp ~ ")") | ("(" ~ exp ~ ")" ~ "[" ~ exp ~ "]") | (lval ~ "[" ~ exp ~ "]") }
+get_addr  = { "&" ~ lval }
+
+number     = @{
+    "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}

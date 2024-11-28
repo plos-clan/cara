@@ -1,10 +1,14 @@
+use colored::*;
+
 mod defs;
 mod program;
 mod types;
+mod expr;
 
 pub use defs::*;
 pub use program::*;
 pub use types::*;
+pub use expr::*;
 
 #[derive(Debug, Clone)]
 pub struct Span {
@@ -25,30 +29,35 @@ impl Span {
     }
 }
 
-impl core::fmt::Display for Span {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"\x1b[1;34m---> \x1b[0m{}:{}:{}\x1b[1;34m\n",self.file,self.start.0,self.start.1)?;
-
+impl Span {
+    pub fn show(&self, f: &mut std::fmt::Formatter<'_>, error_string: String) -> std::fmt::Result {
         let num_len = format!("{}", self.start.0).len();
+        
+        writeln!(f,"{}{} {}","error".red().bold(),":".bold(),error_string.bold())?;
+        
+        for _ in 0..num_len {
+            write!(f, " ")?;
+        }
+        writeln!(f,"{} {}","-->".blue().bold(),format!("{}:{}:{}",self.file, self.start.0,self.start.1))?;
         
         for _ in 0..=num_len {
             write!(f, " ")?;
         }
-        write!(f,"|\n")?;
+        writeln!(f,"{}","|".blue().bold())?;
 
-        write!(f, "{} | \x1b[0m{}\x1b[1;34m", self.start.0,self.string)?;
+        write!(f, "{} {} {}",self.start.0,"|".blue().bold() ,self.string)?;
 
         for _ in 0..=num_len {
             write!(f, " ")?;
         }
-        write!(f,"| ")?;
+        write!(f,"{} ","|".bold().blue())?;
 
         for _ in 0..self.start.1-1 {
             write!(f, " ")?;
         }
 
         for _ in self.start.1..self.end.1 {
-            write!(f, "\x1b[1;31m^\x1b[1;34m")?;
+            write!(f, "{}","^".red().bold())?;
         }
         Ok(())
     }

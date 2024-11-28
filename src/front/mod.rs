@@ -1,11 +1,5 @@
-use std::sync::Mutex;
-
 use crate::ast::*;
-use pest::{
-    iterators::Pair,
-//    pratt_parser::{Assoc, Op, PrattParser},
-    Parser,
-};
+use pest::{iterators::Pair,pratt_parser::*};
 use pest_derive::Parser;
 
 #[derive(Parser)]
@@ -75,9 +69,27 @@ impl CParser {
     }
 
     pub fn parse_ident(&self, rules: Pair<Rule>) -> String {
-        rules.as_str().to_string()
+        let mut ident = rules.as_str().to_string();
+        if ident.starts_with("@") {
+            ident.remove(0);
+            ident.remove(0);
+            ident.pop();
+        }
+        println!("{}", ident);
+        ident
     }
 
+    pub fn parse_lval(&self, rules: Pair<Rule>) -> LVal {
+        let mut rules_iter = rules.clone().into_inner();
+        let id = rules_iter.next().unwrap();
+        let span = self.get_span(rules.as_span().clone());
+        LVal {
+            ids: vec![self.parse_ident(id)],
+            span,
+            exp: None,
+        }
+    }
+    
     pub fn parse_const_initial_value(&self, rules: Pair<Rule>) -> ConstInitialValue {
         let mut rules_iter = rules.clone().into_inner();
 
@@ -87,6 +99,7 @@ impl CParser {
             Rule::function_def => {
                 ConstInitialValueEnum::Function(self.parse_function_def(initial_value))
             }
+            Rule::const_exp => ConstInitialValueEnum::Exp(self.parse_const_exp(initial_value)),
             _ => unimplemented!(),
         };
 
@@ -126,11 +139,102 @@ impl CParser {
         let name = rules_iter.next().unwrap().as_str().to_string();
         let param_type = self.parse_type(rules_iter.next().unwrap());
         let span = self.get_span(rules.as_span().clone());
-        Param { name, param_type, span }
+        Param {
+            name,
+            param_type,
+            span,
+        }
     }
 
     pub fn parse_block(&self, rules: Pair<Rule>) -> Block {
-        Block { span: self.get_span(rules.as_span().clone()) }
+        let mut rules_iter = rules.clone().into_inner();
+        let mut items = Vec::new();
+        while let Some(rule) = rules_iter.next() {
+            match rule.as_rule() {
+                Rule::stmt => items.push(BlockItem::Statement(self.parse_statement(rule))),
+                _ => unimplemented!(),
+            }
+        }
+
+        Block {
+            items,
+            span: self.get_span(rules.as_span().clone()),
+        }
+    }
+
+    pub fn parse_statement(&self, rules: Pair<Rule>) -> Statement {
+        let mut rules_iter = rules.clone().into_inner();
+        let statement = match rules_iter.next().unwrap().as_rule() {
+            Rule::r#return => Statement::Return(self.parse_return(rules.clone())),
+            _ => unimplemented!(),
+        };
+        statement
+    }
+
+    pub fn parse_return(&self, rules: Pair<Rule>) -> Return {
+        let mut rules_iter = rules.clone().into_inner();
+        let exp = rules_iter.next().map(|rule| self.parse_expr(rule));
+        Return {
+            value: exp,
+            span: self.get_span(rules.as_span().clone()),
+        }
+    }
+    
+    pub fn parse_const_exp(&self, rules: Pair<Rule>) -> ConstExp {
+        let mut rules_iter = rules.clone().into_inner();
+        let exp = rules_iter.next().unwrap();
+        ConstExp {
+            exp: self.parse_expr(exp),
+        }
+    }
+
+    pub fn parse_expr(&self, rules: Pair<Rule>) -> Exp {
+        let pratt = PrattParser::new()
+            .op(Op::infix(Rule::eq, Assoc::Left) | Op::infix(Rule::neq, Assoc::Left))
+            .op(Op::infix(Rule::add, Assoc::Left) | Op::infix(Rule::sub, Assoc::Left))
+            .op(Op::infix(Rule::mul, Assoc::Left)
+                | Op::infix(Rule::div, Assoc::Left)
+                | Op::infix(Rule::r#mod, Assoc::Left))
+            .op(Op::prefix(Rule::neg) | Op::prefix(Rule::pos));
+
+        pratt
+            .map_primary(|primary| match primary.as_rule() {
+                Rule::exp => self.parse_expr(primary),
+                Rule::number => Exp::Number(Number {
+                    num: primary.as_str().parse().unwrap(),
+                    span: self.get_span(primary.as_span()),
+                }),
+                Rule::lval => Exp::LVal(Box::new(self.parse_lval(primary))),
+
+                _ => panic!("Unkown primary {}!", primary),
+            })
+            .map_prefix(|op, rhs| match op.as_rule() {
+                Rule::neg => Exp::Unary(UnaryOp::Negative, Box::new(rhs), self.get_span(op.as_span())),
+                Rule::pos => Exp::Unary(UnaryOp::Positive, Box::new(rhs), self.get_span(op.as_span())),
+                _ => unimplemented!(),
+            })
+            .map_postfix(|_lhs, _op| unimplemented!())
+            .map_infix(|lhs, op, rhs| {
+                let lhs = Box::new(lhs);
+                let rhs = Box::new(rhs);
+
+                Exp::Binary(
+                    lhs,
+                    match op.as_rule() {
+                        Rule::eq => BinaryOp::Eq,
+                        Rule::neq => BinaryOp::Neq,
+                        Rule::add => BinaryOp::Add,
+                        Rule::sub => BinaryOp::Sub,
+                        Rule::mul => BinaryOp::Mul,
+                        Rule::div => BinaryOp::Div,
+                        Rule::r#mod => BinaryOp::Mod,
+                        _ => unimplemented!(),
+                    },
+                    rhs,
+                    self.get_span(op.as_span()),
+                )
+            })
+            .parse(rules.into_inner())
     }
 
     pub fn parse_type(&self, rules: Pair<Rule>) -> Type {
