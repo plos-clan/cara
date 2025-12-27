@@ -26,6 +26,7 @@ pub enum BlockItem {
 #[derive(Debug)]
 pub enum Statement {
     Return(Return),
+    Exp(Exp),
 }
 
 #[derive(Debug)]

@@ -64,8 +64,13 @@ peg::parser! {
         }
 
         rule statement() -> Statement
-        = s: (return_stmt()) ";" {
+        = s: (return_stmt() / expr_stmt()) ";" {
             s
+        }
+
+        rule expr_stmt() -> Statement
+        = e: expr() {
+            Statement::Exp(e)
         }
 
         rule return_stmt() -> Statement
@@ -149,6 +154,15 @@ peg::parser! {
                 Exp::Index(Box::new(Index {
                     exp: l,
                     index: r,
+                    span
+                }))
+            }
+            --
+            l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: position!() {
+                let span = Span::new(l.span().start(), r);
+                Exp::Call(Box::new(Call {
+                    func: l,
+                    args,
                     span
                 }))
             }

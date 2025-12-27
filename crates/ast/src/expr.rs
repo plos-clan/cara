@@ -18,7 +18,7 @@ pub enum Array {
 }
 
 impl Array {
-    pub fn get_span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match self {
             Array::List(_, span) => span.clone(),
             Array::Template(_, _, span) => span.clone(),
@@ -38,6 +38,7 @@ pub enum Exp {
     Deref(Box<Deref>),
     Index(Box<Index>),
     Array(Box<Array>),
+    Call(Box<Call>),
 }
 
 impl Exp {
@@ -52,9 +53,17 @@ impl Exp {
             Exp::Str(_, span) => span.clone(),
             Exp::Deref(deref) => deref.span.clone(),
             Exp::Index(index) => index.span.clone(),
-            Exp::Array(array) => array.get_span(),
+            Exp::Array(array) => array.span(),
+            Exp::Call(call) => call.span.clone(),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct Call {
+    pub func: Exp,
+    pub args: Vec<Exp>,
+    pub span: Span,
 }
 
 #[derive(Debug)]

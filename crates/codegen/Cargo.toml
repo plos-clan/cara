@@ -4,4 +4,5 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+ast.workspace = true
 inkwell = { version = "0.7.0", features = ["llvm21-1"] }

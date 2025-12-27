@@ -1,6 +1,11 @@
 const TEST_CODE: &str = r#"
 const main = fn() -> i32 {
-    (*a)[3] + 4
+    test();
+    (*a)[3] + test()
+};
+
+const test = fn() -> i32 {
+    42
 };
 "#;
 
