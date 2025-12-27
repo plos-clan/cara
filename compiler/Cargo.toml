@@ -1,0 +1,8 @@
+[package]
+name = "carac"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+parser.workspace = true
+anyhow.workspace = true

@@ -1,0 +1,9 @@
+[package]
+name = "parser"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+peg = "0.8.5"
+ast.workspace = true
+anyhow.workspace = true

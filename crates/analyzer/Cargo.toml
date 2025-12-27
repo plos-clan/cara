@@ -1,0 +1,6 @@
+[package]
+name = "analyzer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

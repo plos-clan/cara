@@ -1,0 +1,16 @@
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+analyzer = { path = "./crates/analyzer" }
+ast = { path = "./crates/ast" }
+codegen = { path = "./crates/codegen" }
+errors = { path = "./crates/errors" }
+parser = { path = "./crates/parser" }
+anyhow = "1.0.100"
+
+[workspace]
+default-members = ["compiler"]
+members = ["crates/*", "compiler"]
+resolver = "3"
