@@ -1,7 +1,0 @@
-[package]
-name = "errors"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-thiserror = "2.0.17"

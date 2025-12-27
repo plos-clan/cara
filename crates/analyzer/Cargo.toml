@@ -4,3 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+annotate-snippets = "0.12.10"
+ast.workspace = true
+thiserror = "2.0.17"
