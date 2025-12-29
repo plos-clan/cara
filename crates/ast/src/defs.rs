@@ -1,19 +1,19 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConstDef {
     pub name: String,
     pub initial_value: ConstInitialValue,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ConstInitialValue {
     Function(FunctionDef),
     Exp(ConstExp),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionDef {
     pub params: Vec<Param>,
     pub return_type: Type,
@@ -21,7 +21,7 @@ pub struct FunctionDef {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Param {
     pub name: String,
     pub param_type: Type,

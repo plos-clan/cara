@@ -15,7 +15,7 @@ pub enum TypeEnum {
     U64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Type {
     pub kind: TypeEnum,
     pub ref_count: usize,

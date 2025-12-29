@@ -29,6 +29,8 @@
             clang
             llvmPackages.bintools
             llvmPackages.libllvm
+            libffi
+            libxml2
             (rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
           ];
 

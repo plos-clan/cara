@@ -8,6 +8,7 @@ ast = { path = "./crates/ast" }
 codegen = { path = "./crates/codegen" }
 errors = { path = "./crates/errors" }
 parser = { path = "./crates/parser" }
+query = { path = "./crates/query" }
 anyhow = "1.0.100"
 
 [workspace]

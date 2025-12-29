@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConstExp {
     pub exp: Exp,
 }
@@ -11,7 +11,7 @@ impl ConstExp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Array {
     List(Vec<Exp>, Span),
     Template(Exp, ConstExp, Span),
@@ -26,7 +26,7 @@ impl Array {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Exp {
     Exp(Box<Exp>, Span),
     Number(Number),
@@ -59,58 +59,58 @@ impl Exp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Call {
     pub func: Exp,
     pub args: Vec<Exp>,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LVal {
     pub path: Path,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Index {
     pub exp: Exp,
     pub index: Exp,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Deref {
     pub exp: Exp,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GetAddr {
     pub exp: Exp,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Number {
     pub num: u64,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Path {
     pub path: Vec<String>,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum UnaryOp {
     Pos,
     Neg,
     Not,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum BinaryOp {
     Add,
     Sub,

@@ -11,7 +11,7 @@ const test = fn() -> i32 {
 
 fn main() -> anyhow::Result<()> {
     let result = parser::parse(TEST_CODE)?;
-    println!("{:#?}", result);
+    codegen::codegen(&result);
 
     Ok(())
 }

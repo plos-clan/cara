@@ -6,3 +6,4 @@ edition.workspace = true
 [dependencies]
 parser.workspace = true
 anyhow.workspace = true
+codegen.workspace = true
