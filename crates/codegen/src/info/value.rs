@@ -1,16 +1,71 @@
-use inkwell::values::{FunctionValue, IntValue, PointerValue};
+use inkwell::{
+    context::Context,
+    values::{
+        AnyValue, AnyValueEnum, AsValueRef, BasicMetadataValueEnum, BasicValue, FunctionValue,
+        IntValue, PointerValue,
+    },
+};
 
 use crate::info::TypeKind;
 
-pub enum Value<'t> {
-    Int(IntValue<'t>),
-    Function(FunctionValue<'t>),
+#[derive(Debug, Clone)]
+pub enum Value<'v> {
+    Int(IntValue<'v>),
+    Function(FunctionValue<'v>, TypeKind<'v>),
     Pointer {
-        value: PointerValue<'t>,
-        pointee: TypeKind<'t>,
+        value: PointerValue<'v>,
+        ty: TypeKind<'v>,
     },
     Void,
 }
 
 unsafe impl Send for Value<'_> {}
 unsafe impl Sync for Value<'_> {}
+
+impl<'v> Value<'v> {
+    pub fn type_(&self, ctx: &'v Context) -> TypeKind<'v> {
+        match self {
+            Value::Int(v) => TypeKind::Int(v.get_type()),
+            Value::Function(f, _) => TypeKind::Function(f.get_type()),
+            Value::Pointer { ty, .. } => ty.clone(),
+            Value::Void => TypeKind::Void(ctx.void_type()),
+        }
+    }
+}
+
+impl<'v> Value<'v> {
+    pub fn new_from(value: AnyValueEnum<'v>, ty: TypeKind<'v>) -> Self {
+        match value {
+            AnyValueEnum::IntValue(v) => Value::Int(v),
+            AnyValueEnum::PointerValue(v) => Value::Pointer {
+                value: v,
+                ty: ty.clone(),
+            },
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<'v> From<Value<'v>> for BasicMetadataValueEnum<'v> {
+    fn from(value: Value<'v>) -> Self {
+        match value {
+            Value::Int(v) => BasicMetadataValueEnum::IntValue(v),
+            Value::Pointer { value, .. } => BasicMetadataValueEnum::PointerValue(value),
+            _ => unreachable!(),
+        }
+    }
+}
+
+unsafe impl<'v> AsValueRef for Value<'v> {
+    fn as_value_ref(&self) -> inkwell::llvm_sys::prelude::LLVMValueRef {
+        match self {
+            Value::Int(v) => v.as_value_ref(),
+            Value::Function(v, _) => v.as_value_ref(),
+            Value::Pointer { value, .. } => value.as_value_ref(),
+            Value::Void => unreachable!(),
+        }
+    }
+}
+
+unsafe impl<'v> AnyValue<'v> for Value<'v> {}
+unsafe impl<'v> BasicValue<'v> for Value<'v> {}

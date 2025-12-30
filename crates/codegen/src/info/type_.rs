@@ -8,7 +8,7 @@ use inkwell::{
 
 use crate::Generator;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum TypeKind<'t> {
     Void(VoidType<'t>),
     Function(FunctionType<'t>),

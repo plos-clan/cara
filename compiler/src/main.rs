@@ -1,7 +1,6 @@
 const TEST_CODE: &str = r#"
 const main = fn() -> i32 {
-    test();
-    (*a)[3] + test()
+    test()
 };
 
 const test = fn() -> i32 {
@@ -10,6 +9,8 @@ const test = fn() -> i32 {
 "#;
 
 fn main() -> anyhow::Result<()> {
+    codegen::init();
+
     let result = parser::parse(TEST_CODE)?;
     codegen::codegen(&result);
 
