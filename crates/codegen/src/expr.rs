@@ -56,6 +56,9 @@ impl<'g> Generator<'g> {
             Exp::Exp(e, _) => self.visit_exp(ctx, e),
             Exp::Number(n) => Value::Int(self.ctx.i32_type().const_int(n.num, true)),
             Exp::LVal(lval) => self.visit_lval(ctx, lval),
+            Exp::Block(block) => {
+                self.visit_block(ctx, block).unwrap_or(Value::Void)
+            }
             _ => unimplemented!(),
         }
     }

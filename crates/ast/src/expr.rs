@@ -39,6 +39,7 @@ pub enum Exp {
     Index(Box<Index>),
     Array(Box<Array>),
     Call(Box<Call>),
+    Block(Box<Block>),
 }
 
 impl Exp {
@@ -55,6 +56,7 @@ impl Exp {
             Exp::Index(index) => index.span.clone(),
             Exp::Array(array) => array.span(),
             Exp::Call(call) => call.span.clone(),
+            Exp::Block(block) => block.span.clone(),
         }
     }
 }

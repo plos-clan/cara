@@ -9,6 +9,7 @@ impl<'g> Generator<'g> {
             TypeEnum::I16 | TypeEnum::U16 => self.new_int(16),
             TypeEnum::I32 | TypeEnum::U32 => self.new_int(32),
             TypeEnum::I64 | TypeEnum::U64 => self.new_int(64),
+            TypeEnum::Void => self.new_void(),
         };
         for _ in 0..ty.ref_count {
             type_ = self.new_ptr(type_);

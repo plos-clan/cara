@@ -1,6 +1,13 @@
 const TEST_CODE: &str = r#"
 const main = fn() -> i32 {
-    test()
+    test_void();
+    {
+        test()
+    }
+};
+
+const test_void = fn() -> void {
+    return;
 };
 
 const test = fn() -> i32 {

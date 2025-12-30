@@ -174,6 +174,7 @@ peg::parser! {
             s: string() { s }
             i: lval() { Exp::LVal(Box::new(i)) }
             g: get_addr() { Exp::GetAddr(Box::new(g)) }
+            b: block() { Exp::Block(Box::new(b)) }
         }
 
         rule deref() -> Deref
@@ -247,6 +248,9 @@ peg::parser! {
             }
             / "u64" {
                 TypeEnum::U64
+            }
+            / "void" {
+                TypeEnum::Void
             }
 
         rule type_() -> Type
