@@ -149,20 +149,26 @@ fn codegen_provider<'g>(arg: (Arc<Generator<'g>>, ConstDef)) -> Value<'g> {
                 .insert(name, result.clone());
 
             let entry_bb = generator.ctx.append_basic_block(function, "entry");
-            let builder_creator = || {
-                let builder = generator.ctx.create_builder();
-                builder.position_at_end(entry_bb);
-                builder
-            };
+            let builder = generator.ctx.create_builder();
+            builder.position_at_end(entry_bb);
 
-            if let Some(value) = generator.visit_block(
-                &mut VisitorCtx {
-                    builder: builder_creator(),
-                    symbols: SymbolStack::new(),
-                },
-                &block,
-            ) {
-                builder_creator().build_return(Some(&value)).unwrap();
+            let mut ctx = VisitorCtx {
+                builder,
+                symbols: SymbolStack::new(),
+            };
+            if let Some(value) = generator.visit_block(&mut ctx, &block)
+                && !matches!(value, Value::Void)
+            {
+                ctx.builder.build_return(Some(&value)).unwrap();
+            }
+            if ctx
+                .builder
+                .get_insert_block()
+                .unwrap()
+                .get_terminator()
+                .is_none()
+            {
+                ctx.builder.build_return(None).unwrap();
             }
 
             result

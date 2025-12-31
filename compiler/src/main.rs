@@ -2,7 +2,7 @@ const TEST_CODE: &str = r#"
 const main = fn() -> i32 {
     test_void();
     {
-        test()
+        return test();
     }
 };
 

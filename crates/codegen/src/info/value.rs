@@ -35,6 +35,9 @@ impl<'v> Value<'v> {
 
 impl<'v> Value<'v> {
     pub fn new_from(value: AnyValueEnum<'v>, ty: TypeKind<'v>) -> Self {
+        if matches!(ty, TypeKind::Void(_)) {
+            return Value::Void;
+        }
         match value {
             AnyValueEnum::IntValue(v) => Value::Int(v),
             AnyValueEnum::PointerValue(v) => Value::Pointer {

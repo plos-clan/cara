@@ -13,7 +13,7 @@ pub enum TypeEnum {
     U16,
     U32,
     U64,
-    
+
     Void,
 }
 
@@ -36,7 +36,7 @@ impl Display for TypeEnum {
             TypeEnum::U16 => write!(f, "u16"),
             TypeEnum::U32 => write!(f, "u32"),
             TypeEnum::U64 => write!(f, "u64"),
-            
+
             TypeEnum::Void => write!(f, "void"),
         }
     }

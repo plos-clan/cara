@@ -33,7 +33,13 @@ impl<'v> Generator<'v> {
     fn visit_return(self: &Arc<Self>, ctx: &mut VisitorCtx<'v>, ret: &Return) {
         if let Some(value) = ret.value.as_ref() {
             let value = self.visit_exp(ctx, value);
-            ctx.builder.build_return(Some(&value)).unwrap();
+            ctx.builder
+                .build_return(if matches!(value, Value::Void) {
+                    None
+                } else {
+                    Some(&value)
+                })
+                .unwrap();
         } else {
             ctx.builder.build_return(None).unwrap();
         }
