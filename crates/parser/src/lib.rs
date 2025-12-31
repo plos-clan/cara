@@ -28,9 +28,17 @@ peg::parser! {
             GlobalItem::ConstDef(c)
         }
 
+        rule abi() -> Abi
+        = "extern" _ abi: $("C" / "c") _ "[" name: identifier() _ "]" {
+            match abi {
+                "C" | "c" => Abi::CAbi(name),
+                _ => unreachable!(),
+            }
+        }
+
         rule function_def() -> FunctionDef
-        = l: position!() _ "fn" _ "(" _ params: (param() ** ",") _ ")" _ "->" _ return_type: type_() _ block: block() _ r: position!() {
-            FunctionDef { params, return_type, block, span: Span::new(l, r) }
+        = l: position!() _ abi: abi()? _ "fn" _ "(" _ params: (param() ** ",") _ ")" _ "->" _ return_type: type_() _ block: block() _ r: position!() {
+            FunctionDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, block, span: Span::new(l, r) }
         }
 
         rule const_def() -> ConstDef
@@ -171,7 +179,7 @@ peg::parser! {
                 e
             }
             n: number() { n }
-            s: string() { s }
+            s: string_wrapper() { s }
             i: lval() { Exp::LVal(Box::new(i)) }
             g: get_addr() { Exp::GetAddr(Box::new(g)) }
             b: block() { Exp::Block(Box::new(b)) }
@@ -193,9 +201,9 @@ peg::parser! {
             }
         }
 
-        rule string() -> Exp
-             = s: position!() r#""""# i:$([^'"']*) r#""""# e: position!() {
-            Exp::Str(i.to_string(), Span::new(s, e))
+        rule string_wrapper() -> Exp
+             = s: position!() string: string() e: position!() {
+            Exp::Str(string, Span::new(s, e))
         }
 
         rule lval() -> LVal
@@ -266,6 +274,11 @@ peg::parser! {
           = n:$([ 'a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '0'..='9' | '_' ]*) {
               n.into()
           }
+
+        rule string() -> String
+          = r#""""# i:$([^'"']*) r#""""# {
+            i.to_string()
+        }
 
         rule whitespace() = quiet!{[' ' | '\n' | '\t']*}
         rule _() = whitespace()

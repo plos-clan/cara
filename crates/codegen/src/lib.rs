@@ -123,11 +123,17 @@ fn codegen_provider<'g>(arg: (Arc<Generator<'g>>, ConstDef)) -> Value<'g> {
 
     match initial_value {
         ConstInitialValue::Function(FunctionDef {
+            abi,
             params,
             return_type,
             block,
             span: _,
         }) => {
+            let function_name = match abi {
+                ast::Abi::CAbi(name) => name,
+                _ => "".into(),
+            };
+            
             let mut param_types = Vec::new();
             for param in params {
                 param_types.push(generator.visit_type(&param.param_type));
@@ -136,7 +142,7 @@ fn codegen_provider<'g>(arg: (Arc<Generator<'g>>, ConstDef)) -> Value<'g> {
             let return_type = generator.visit_type(&return_type);
             let function_type = return_type.function(param_types);
             let function = generator.module.lock().unwrap().add_function(
-                &name,
+                &function_name,
                 function_type.as_function_type(),
                 None,
             );

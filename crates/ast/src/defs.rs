@@ -14,7 +14,14 @@ pub enum ConstInitialValue {
 }
 
 #[derive(Debug, Clone)]
+pub enum Abi {
+    Cara,
+    CAbi(String),
+}
+
+#[derive(Debug, Clone)]
 pub struct FunctionDef {
+    pub abi: Abi,
     pub params: Vec<Param>,
     pub return_type: Type,
     pub block: Block,
