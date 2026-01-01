@@ -57,8 +57,15 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         unimplemented!()
     }
 
-    fn visit_unary(&mut self, _op: &ast::UnaryOp, _value: Value<'v>) -> Value<'v> {
-        unimplemented!()
+    fn visit_unary(&mut self, op: &ast::UnaryOp, value: Value<'v>) -> Value<'v> {
+        let Value::Int(value) = value else {
+            unreachable!()
+        };
+        Value::Int(match op {
+            ast::UnaryOp::Neg => self.builder.build_int_neg(value, "").unwrap(),
+            ast::UnaryOp::Pos => value,
+            ast::UnaryOp::Not => self.builder.build_not(value, "").unwrap(),
+        })
     }
 
     fn visit_call(&mut self, call: &Call) -> Value<'v> {
