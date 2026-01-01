@@ -1,7 +1,6 @@
 use std::{
-    collections::BTreeMap,
     path::Path,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
 };
 
 use ast::{CompUnit, ConstDef, ConstInitialValue, FunctionDef};
@@ -13,9 +12,9 @@ use inkwell::{
     passes::PassBuilderOptions,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
 };
-use query::{ProviderId, QuerySystem};
+use query::{DefId, ProviderId, Providers, QueryContext};
 
-use crate::info::{ConstDefTable, SymbolStack, Value};
+use crate::info::{SymbolStack, Value};
 
 mod defs;
 mod expr;
@@ -78,48 +77,57 @@ pub fn codegen(comp_unit: &CompUnit) {
 struct Generator<'g> {
     ctx: &'g Context,
     module: Mutex<Module<'g>>,
-    queries: QuerySystem<(Arc<Self>, ConstDef), Value<'g>>,
+    queries: QueryContext<'g>,
+    providers: Providers<(Arc<Self>, DefId), Value<'g>>,
     codegen_provider: ProviderId,
-    table: ConstDefTable<'g>,
-    globals: RwLock<BTreeMap<String, Value<'g>>>,
 }
 
 unsafe impl Send for Generator<'_> {}
 unsafe impl Sync for Generator<'_> {}
 
+impl PartialEq for Generator<'_> {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+impl Eq for Generator<'_> {}
+impl PartialOrd for Generator<'_> {
+    fn partial_cmp(&self, _other: &Self) -> Option<std::cmp::Ordering> {
+        None
+    }
+}
+impl Ord for Generator<'_> {
+    fn cmp(&self, _other: &Self) -> std::cmp::Ordering {
+        std::cmp::Ordering::Equal
+    }
+}
+
 impl<'g> Generator<'g> {
     fn new(ctx: &'g Context, comp_unit: &'g CompUnit) -> Self {
         let module = Mutex::new(ctx.create_module("main"));
-        let mut queries = QuerySystem::new();
-        let codegen_provider = queries.register_provider(Box::new(codegen_provider));
+        let queries = QueryContext::new(comp_unit);
+        let mut providers = Providers::new();
+        let codegen_provider = providers.register(Box::new(codegen_provider));
         Generator {
             ctx,
             module,
             queries,
+            providers,
             codegen_provider,
-            table: ConstDefTable::new(comp_unit),
-            globals: RwLock::new(BTreeMap::new()),
         }
     }
 
     pub fn query(self: &Arc<Self>, name: &str) -> Option<Value<'g>> {
-        let def = self.table.get(name)?;
-        Some(
-            self.queries
-                .query(self.codegen_provider, (self.clone(), def)),
-        )
+        let id = self.queries.lookup_def_id(name)?;
+        self.queries
+            .query_cached(&self.providers, self.codegen_provider, (self.clone(), id))
     }
 }
 
-fn codegen_provider<'g>(arg: (Arc<Generator<'g>>, ConstDef)) -> Value<'g> {
-    let (
-        generator,
-        ConstDef {
-            name,
-            initial_value,
-            span: _,
-        },
-    ) = arg;
+fn codegen_provider<'g>(ctx: &QueryContext, arg: (Arc<Generator<'g>>, DefId)) -> Value<'g> {
+    let (generator, def_id) = arg;
+
+    let ConstDef { initial_value, .. } = ctx.get_def(def_id).unwrap();
 
     match initial_value {
         ConstInitialValue::Function(FunctionDef {
@@ -130,10 +138,10 @@ fn codegen_provider<'g>(arg: (Arc<Generator<'g>>, ConstDef)) -> Value<'g> {
             span: _,
         }) => {
             let function_name = match abi {
-                ast::Abi::CAbi(name) => name,
+                ast::Abi::CAbi(name) => name.clone(),
                 _ => "".into(),
             };
-            
+
             let mut param_types = Vec::new();
             for param in params {
                 param_types.push(generator.visit_type(&param.param_type));
@@ -148,11 +156,6 @@ fn codegen_provider<'g>(arg: (Arc<Generator<'g>>, ConstDef)) -> Value<'g> {
             );
             function.set_call_conventions(0); // C
             let result = Value::Function(function, return_type);
-            generator
-                .globals
-                .write()
-                .unwrap()
-                .insert(name, result.clone());
 
             let entry_bb = generator.ctx.append_basic_block(function, "entry");
             let builder = generator.ctx.create_builder();

@@ -107,8 +107,6 @@ impl<'g> Generator<'g> {
         let name = lval.path.path.join(".");
         if let Some(value) = ctx.symbols.lookup(&name).map(|s| s.value()) {
             value.clone()
-        } else if let Some(value) = self.globals.read().unwrap().get(&name) {
-            value.clone()
         } else {
             self.query(&name).unwrap()
         }
