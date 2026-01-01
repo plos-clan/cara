@@ -1,39 +1,23 @@
-use std::sync::Arc;
+use ast::{
+    Return,
+    visitor::{BlockVisitor, ExpVisitor},
+};
 
-use ast::{Block, BlockItem, Return, Statement};
+use crate::{VisitorCtx, info::Value};
 
-use crate::{Generator, VisitorCtx, info::Value};
-
-impl<'v> Generator<'v> {
-    pub fn visit_block(
-        self: &Arc<Self>,
-        ctx: &mut VisitorCtx<'v>,
-        block: &Block,
-    ) -> Option<Value<'v>> {
-        ctx.symbols.push_scope();
-        for item in &block.items {
-            match item {
-                BlockItem::Statement(stmt) => self.visit_statement(ctx, stmt),
-            }
-        }
-        let return_value = block.return_value.as_ref().map(|v| self.visit_exp(ctx, v));
-        ctx.symbols.pop_scope();
-        return_value
+impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
+    fn on_enter_block(&mut self) {
+        self.symbols.push_scope();
     }
 
-    fn visit_statement(self: &Arc<Self>, ctx: &mut VisitorCtx<'v>, stmt: &Statement) {
-        match stmt {
-            Statement::Exp(exp) => {
-                self.visit_exp(ctx, exp);
-            }
-            Statement::Return(ret) => self.visit_return(ctx, ret),
-        }
+    fn on_leave_block(&mut self) {
+        self.symbols.pop_scope();
     }
 
-    fn visit_return(self: &Arc<Self>, ctx: &mut VisitorCtx<'v>, ret: &Return) {
+    fn visit_return(&mut self, ret: &Return) -> Option<Value<'v>> {
         if let Some(value) = ret.value.as_ref() {
-            let value = self.visit_exp(ctx, value);
-            ctx.builder
+            let value = self.visit_exp(value);
+            self.builder
                 .build_return(if matches!(value, Value::Void) {
                     None
                 } else {
@@ -41,7 +25,9 @@ impl<'v> Generator<'v> {
                 })
                 .unwrap();
         } else {
-            ctx.builder.build_return(None).unwrap();
+            self.builder.build_return(None).unwrap();
         }
+
+        None
     }
 }

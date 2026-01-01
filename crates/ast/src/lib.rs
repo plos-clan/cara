@@ -7,6 +7,7 @@ mod defs;
 mod expr;
 mod program;
 mod types;
+pub mod visitor;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Span(usize, usize);
