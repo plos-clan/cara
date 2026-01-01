@@ -53,7 +53,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         Value::Int(self.generator.ctx.i32_type().const_int(number.num, true))
     }
 
-    fn visit_str(&mut self, _string: &String) -> Value<'v> {
+    fn visit_str(&mut self, _string: &str) -> Value<'v> {
         unimplemented!()
     }
 
@@ -83,7 +83,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         match array {
             Array::List(values, _) => {
                 let values = values.iter().map(|e| self.visit_exp(e)).collect::<Vec<_>>();
-                let type_ = values[0].type_(&self.generator.ctx);
+                let type_ = values[0].type_(self.generator.ctx);
 
                 let array = self
                     .builder

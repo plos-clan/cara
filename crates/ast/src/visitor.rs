@@ -48,7 +48,7 @@ pub trait ExpVisitor<V> {
     fn visit_index(&mut self, index: &Index) -> V;
     fn visit_lval(&mut self, lval: &LVal) -> V;
     fn visit_number(&mut self, number: &Number) -> V;
-    fn visit_str(&mut self, string: &String) -> V;
+    fn visit_str(&mut self, string: &str) -> V;
     fn visit_block(&mut self, block: &Block) -> V;
 }
 

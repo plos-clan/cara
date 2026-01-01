@@ -36,10 +36,7 @@ impl<'d> QueryContext<'d> {
         provider: ProviderId,
         arg: A,
     ) -> Option<R> {
-        let provider = providers
-            .providers
-            .get(&provider)
-            .map(|provider| provider)?;
+        let provider = providers.providers.get(&provider)?;
 
         Some(self.thread_pool.install(|| provider(self, arg)))
     }
@@ -50,10 +47,10 @@ impl<'d> QueryContext<'d> {
         provider: ProviderId,
         arg: A,
     ) -> Option<R> {
-        if let Some(cache) = providers.cache.read().unwrap().get(&provider) {
-            if let Some(value) = cache.get(&arg) {
-                return Some(value.clone());
-            }
+        if let Some(cache) = providers.cache.read().unwrap().get(&provider)
+            && let Some(value) = cache.get(&arg)
+        {
+            return Some(value.clone());
         }
 
         let result = self.query(providers, provider, arg.clone());

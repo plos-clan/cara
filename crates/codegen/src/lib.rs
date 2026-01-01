@@ -95,9 +95,10 @@ impl PartialEq for Generator<'_> {
     }
 }
 impl Eq for Generator<'_> {}
+
 impl PartialOrd for Generator<'_> {
-    fn partial_cmp(&self, _other: &Self) -> Option<std::cmp::Ordering> {
-        None
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 impl Ord for Generator<'_> {

@@ -40,7 +40,7 @@ impl<'t> TypeKind<'t> {
     pub fn function(&self, arg_types: Vec<Self>) -> Self {
         let arg_types = arg_types
             .into_iter()
-            .map(|t| BasicMetadataTypeEnum::from(t))
+            .map(BasicMetadataTypeEnum::from)
             .collect::<Vec<_>>();
         match self {
             TypeKind::Void(void_type) => TypeKind::Function(void_type.fn_type(&arg_types, false)),
@@ -51,7 +51,7 @@ impl<'t> TypeKind<'t> {
 
     pub fn as_function_type(&self) -> FunctionType<'t> {
         match self {
-            TypeKind::Function(function_type) => function_type.clone(),
+            TypeKind::Function(function_type) => *function_type,
             _ => panic!("Incorrect usage of type."),
         }
     }

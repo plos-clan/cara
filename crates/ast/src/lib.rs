@@ -21,6 +21,10 @@ impl Span {
         self.1 - self.0
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0 == self.1
+    }
+
     pub fn start(&self) -> usize {
         self.0
     }

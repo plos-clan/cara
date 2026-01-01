@@ -21,6 +21,12 @@ impl<A: Tuple, R> Providers<A, R> {
     }
 }
 
+impl<A: Tuple, R> Default for Providers<A, R> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<A: Tuple, R> Providers<A, R> {
     pub fn register(&mut self, provider: Provider<A, R>) -> ProviderId {
         let id = ProviderId(self.providers.len() as u64);

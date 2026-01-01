@@ -20,8 +20,8 @@ pub enum Array {
 impl Array {
     pub fn span(&self) -> Span {
         match self {
-            Array::List(_, span) => span.clone(),
-            Array::Template(_, _, span) => span.clone(),
+            Array::List(_, span) => *span,
+            Array::Template(_, _, span) => *span,
         }
     }
 }
@@ -45,18 +45,18 @@ pub enum Exp {
 impl Exp {
     pub fn span(&self) -> Span {
         match self {
-            Exp::Exp(_, span) => span.clone(),
-            Exp::Number(number) => number.span.clone(),
-            Exp::LVal(lval) => lval.span.clone(),
-            Exp::Unary(_, _, span) => span.clone(),
-            Exp::Binary(_, _, _, span) => span.clone(),
-            Exp::GetAddr(get_addr) => get_addr.span.clone(),
-            Exp::Str(_, span) => span.clone(),
-            Exp::Deref(deref) => deref.span.clone(),
-            Exp::Index(index) => index.span.clone(),
+            Exp::Exp(_, span) => *span,
+            Exp::Number(number) => number.span,
+            Exp::LVal(lval) => lval.span,
+            Exp::Unary(_, _, span) => *span,
+            Exp::Binary(_, _, _, span) => *span,
+            Exp::GetAddr(get_addr) => get_addr.span,
+            Exp::Str(_, span) => *span,
+            Exp::Deref(deref) => deref.span,
+            Exp::Index(index) => index.span,
             Exp::Array(array) => array.span(),
-            Exp::Call(call) => call.span.clone(),
-            Exp::Block(block) => block.span.clone(),
+            Exp::Call(call) => call.span,
+            Exp::Block(block) => block.span,
         }
     }
 }
