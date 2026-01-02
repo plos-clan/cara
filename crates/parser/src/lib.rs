@@ -19,11 +19,6 @@ peg::parser! {
         }
 
         rule global_item() -> GlobalItem
-        = g: (global_item_const_def()) ";" {
-            g
-        }
-
-        rule global_item_const_def() -> GlobalItem
         = c: const_def() {
             GlobalItem::ConstDef(c)
         }
@@ -42,7 +37,7 @@ peg::parser! {
         }
 
         rule const_def() -> ConstDef
-        = l: position!() _ "const" _ name: identifier() _ "=" _ value: const_initial_value() _ r: position!() {
+        = l: position!() _ "const" _ name: identifier() _ "=" _ value: const_initial_value() _ ";" r: position!() {
             ConstDef { name, initial_value: value, span: Span::new(l, r) }
         }
 
@@ -71,18 +66,21 @@ peg::parser! {
         }
 
         rule statement() -> Statement
-        = s: (return_stmt() / expr_stmt()) ";" {
+        = s: statement_impl() ";" {
             s
         }
 
-        rule expr_stmt() -> Statement
-        = e: expr() {
+        rule statement_impl() -> Statement
+        = r: return_stmt() {
+            Statement::Return(r)
+        } /
+        e: expr() {
             Statement::Exp(e)
         }
 
-        rule return_stmt() -> Statement
+        rule return_stmt() -> Return
         = l: position!() _ "return" _ value: expr()? _ r: position!() {
-            Statement::Return(Return { value, span: Span::new(l, r) })
+            Return { value, span: Span::new(l, r) }
         }
 
         rule param() -> Param
