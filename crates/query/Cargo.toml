@@ -6,5 +6,4 @@ edition.workspace = true
 [dependencies]
 ast.workspace = true
 downcast-rs = "2.0.2"
-pastey = "0.2.1"
 rayon = "1.11.0"
