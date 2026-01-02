@@ -4,7 +4,7 @@ use ast::{Array, BinaryOp, Call, LVal, visitor::ExpVisitor};
 
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
-    info::{TypeKind, Value},
+    info::{Symbol, Value},
     queries::{CODEGEN_PROVIDER, CodegenResult},
 };
 
@@ -102,7 +102,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                     .unwrap();
                 Value::Pointer {
                     value: array,
-                    ty: TypeKind::new_ptr(type_),
+                    ty: type_.new_ptr(),
                 }
             }
             Array::Template(_, _, _) => {
@@ -113,8 +113,23 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_lval(&mut self, lval: &LVal) -> Value<'v> {
         let name = lval.path.path.join(".");
-        if let Some(value) = self.symbols.lookup(&name).map(|s| s.value()) {
-            value.clone()
+        if let Some(symbol) = self.symbols.lookup(&name) {
+            match symbol {
+                Symbol::MutableVar(_, ptr) => {
+                    let Value::Pointer { value, ty } = ptr else {
+                        unreachable!()
+                    };
+                    let ty = ty.derefed();
+                    Value::new_from(
+                        self.builder
+                            .build_load(ty.clone(), value.clone(), "")
+                            .unwrap()
+                            .as_any_value_enum(),
+                        ty,
+                    )
+                }
+                Symbol::ImmutableVar(_, value) => value.clone(),
+            }
         } else {
             let def_id = self.queries.lookup_def_id(&name).unwrap();
             let CodegenResult { module, mut value } = self

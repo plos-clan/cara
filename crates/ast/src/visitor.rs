@@ -1,6 +1,6 @@
 use crate::*;
 
-pub trait CompUnitVisitor: DefVisitor {
+pub trait CompUnitVisitor {
     fn visit_comp_unit(&mut self, comp_unit: &CompUnit) {
         for item in comp_unit.global_items.iter() {
             match item {
@@ -8,11 +8,8 @@ pub trait CompUnitVisitor: DefVisitor {
             }
         }
     }
-}
 
-pub trait DefVisitor {
     fn visit_const_def(&mut self, const_def: &ConstDef);
-    fn visit_function_def(&mut self, func_def: &FunctionDef);
 }
 
 pub trait ExpVisitor<V> {
@@ -62,12 +59,17 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
         for item in block.items.iter() {
             if let Some(return_value) = match item {
                 BlockItem::Statement(stmt) => self.visit_statement(stmt),
+                BlockItem::VarDef(var_def) => {
+                    self.visit_var_def(var_def);
+                    None
+                }
             } {
                 return Some(return_value);
             }
         }
+        let result = block.return_value.as_ref().map(|e| self.visit_exp(e));
         self.on_leave_block();
-        block.return_value.as_ref().map(|e| self.visit_exp(e))
+        result
     }
 
     fn visit_statement(&mut self, stmt: &Statement) -> Option<V> {
@@ -81,4 +83,5 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
     }
     /// If this returns `Some`, the function returns the value.
     fn visit_return(&mut self, return_stmt: &Return) -> Option<V>;
+    fn visit_var_def(&mut self, var_def: &VarDef);
 }

@@ -1,34 +1,38 @@
 use crate::info::Value;
 
 pub struct SymbolStack<'s> {
+    cache: Vec<Symbol<'s>>,
     symbols: Vec<Vec<Symbol<'s>>>,
 }
 
+#[derive(Debug)]
 pub enum Symbol<'s> {
-    Const(String, Value<'s>),
-}
-
-impl<'s> Symbol<'s> {
-    pub fn value(&self) -> &Value<'s> {
-        match self {
-            Symbol::Const(_, value) => value,
-        }
-    }
+    MutableVar(String, Value<'s>),
+    ImmutableVar(String, Value<'s>),
 }
 
 impl<'s> SymbolStack<'s> {
     pub fn new() -> Self {
         SymbolStack {
             symbols: Vec::new(),
+            cache: Vec::new(),
         }
     }
 
     pub fn push_scope(&mut self) {
-        self.symbols.push(Vec::new());
+        let mut scope = Vec::new();
+        for symbol in self.cache.drain(..) {
+            scope.push(symbol);
+        }
+        self.symbols.push(scope);
     }
 
     pub fn pop_scope(&mut self) {
         self.symbols.pop();
+    }
+
+    pub fn pre_push(&mut self, symbol: Symbol<'s>) {
+        self.cache.push(symbol);
     }
 
     pub fn push(&mut self, symbol: Symbol<'s>) {
@@ -40,7 +44,12 @@ impl<'s> SymbolStack<'s> {
         for table in self.symbols.iter().rev() {
             for symbol in table.iter().rev() {
                 match symbol {
-                    Symbol::Const(symbol_name, _) => {
+                    Symbol::MutableVar(symbol_name, _) => {
+                        if symbol_name == name {
+                            return Some(symbol);
+                        }
+                    }
+                    Symbol::ImmutableVar(symbol_name, _) => {
                         if symbol_name == name {
                             return Some(symbol);
                         }

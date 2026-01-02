@@ -3,7 +3,10 @@ use ast::{
     visitor::{BlockVisitor, ExpVisitor},
 };
 
-use crate::{VisitorCtx, info::Value};
+use crate::{
+    LLVM_CONTEXT, VisitorCtx,
+    info::{Symbol, Value},
+};
 
 impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
     fn on_enter_block(&mut self) {
@@ -29,5 +32,25 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
         }
 
         None
+    }
+
+    fn visit_var_def(&mut self, var_def: &ast::VarDef) {
+        let value = self.visit_exp(&var_def.initial_value);
+
+        if var_def.mutable {
+            let ty = value.type_(&LLVM_CONTEXT);
+            let alloca = self.create_entry_bb_alloca(&var_def.name, ty);
+            let Value::Pointer { value: ptr, .. } = alloca else {
+                unreachable!()
+            };
+
+            self.builder.build_store(ptr, value).unwrap();
+
+            self.symbols
+                .push(Symbol::MutableVar(var_def.name.clone(), alloca));
+        } else {
+            self.symbols
+                .push(Symbol::ImmutableVar(var_def.name.clone(), value));
+        }
     }
 }

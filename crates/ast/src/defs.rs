@@ -1,6 +1,15 @@
 use super::*;
 
 #[derive(Debug, Clone)]
+pub struct VarDef {
+    pub name: String,
+    pub var_type: Option<Type>,
+    pub initial_value: Exp,
+    pub mutable: bool,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub struct ConstDef {
     pub name: String,
     pub initial_value: ConstInitialValue,

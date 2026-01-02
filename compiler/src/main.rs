@@ -1,10 +1,13 @@
 const TEST_CODE: &str = r#"
-const return_code = -(114 + 5);
+const return_code = 0;
 
 const main = extern C[main] fn() -> i32 {
     test_void();
+    
+    let mut return_code = return_code_getter(return_code);
+    
     {
-        return -return_code_getter();
+        return return_code;
     }
 };
 
@@ -12,7 +15,8 @@ const test_void = fn() -> void {
     return;
 };
 
-const return_code_getter = fn() -> i32 {
+const return_code_getter = fn(return_code: i32) -> i32 {
+    let return_code = return_code;
     return_code
 };
 "#;

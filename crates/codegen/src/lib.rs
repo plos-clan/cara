@@ -12,12 +12,13 @@ use inkwell::{
     module::Module,
     passes::PassBuilderOptions,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
+    values::FunctionValue,
 };
 use query::QueryContext;
 use send_wrapper::SendWrapper;
 
 use crate::{
-    info::SymbolStack,
+    info::{SymbolStack, TypeKind, Value},
     queries::{CODEGEN_PROVIDER, CodegenResult},
 };
 
@@ -63,7 +64,6 @@ pub fn codegen(comp_unit: &CompUnit) {
     let queries = QueryContext::new(comp_unit);
 
     let main = queries.lookup_def_id("main").unwrap();
-    println!("OK");
     let CodegenResult {
         module: Some(module),
         ..
@@ -75,7 +75,7 @@ pub fn codegen(comp_unit: &CompUnit) {
         unreachable!()
     };
 
-    println!("OK");
+    module.print_to_stderr();
 
     let passes: &[&str] = &[
         "instcombine",
@@ -110,4 +110,27 @@ struct VisitorCtx<'v> {
     symbols: SymbolStack<'v>,
     module: Module<'static>,
     queries: Arc<QueryContext<'v>>,
+    current_fn: FunctionValue<'v>,
+}
+
+impl<'v> VisitorCtx<'v> {
+    fn create_entry_bb_alloca(&self, name: &str, ty: TypeKind<'v>) -> Value<'v> {
+        let builder = LLVM_CONTEXT.create_builder();
+
+        let entry_bb = self.current_fn.get_first_basic_block().unwrap();
+
+        match entry_bb.get_first_instruction() {
+            Some(first_ins) => {
+                builder.position_before(&first_ins);
+            }
+            None => {
+                builder.position_at_end(entry_bb);
+            }
+        }
+
+        Value::Pointer {
+            value: builder.build_alloca(ty.clone(), name).unwrap(),
+            ty: ty.new_ptr(),
+        }
+    }
 }

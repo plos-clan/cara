@@ -68,5 +68,14 @@ unsafe impl<'v> AsValueRef for Value<'v> {
     }
 }
 
+impl<'v> From<Value<'v>> for PointerValue<'v> {
+    fn from(value: Value<'v>) -> Self {
+        match value {
+            Value::Pointer { value, .. } => value,
+            _ => unreachable!(),
+        }
+    }
+}
+
 unsafe impl<'v> AnyValue<'v> for Value<'v> {}
 unsafe impl<'v> BasicValue<'v> for Value<'v> {}

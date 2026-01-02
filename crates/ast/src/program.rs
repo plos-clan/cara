@@ -21,6 +21,7 @@ pub struct Block {
 #[derive(Debug, Clone)]
 pub enum BlockItem {
     Statement(Statement),
+    VarDef(VarDef),
 }
 
 #[derive(Debug, Clone)]

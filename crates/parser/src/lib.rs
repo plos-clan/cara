@@ -57,8 +57,17 @@ peg::parser! {
         }
 
         rule block_item() -> BlockItem
-        = i: (statement()) {
-            BlockItem::Statement(i)
+        = v: var_def() {
+            BlockItem::VarDef(v)
+        } / s: statement() {
+            BlockItem::Statement(s)
+        }
+
+        rule var_def() -> VarDef
+        = l: position!() _ "let" _ mutable: ("mut"?) _ name: identifier() _
+                var_type: (":" _ t: type_() {t} )? _
+                "=" _ value: expr() _ ";" r: position!() {
+            VarDef { name, var_type, initial_value: value, mutable: mutable.is_some(), span: Span::new(l, r) }
         }
 
         rule statement() -> Statement

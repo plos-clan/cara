@@ -1,8 +1,8 @@
 use inkwell::{
     AddressSpace,
     types::{
-        AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum, FunctionType, IntType, PointerType,
-        VoidType,
+        AnyType, AnyTypeEnum, AsTypeRef, BasicMetadataTypeEnum, BasicType, BasicTypeEnum,
+        FunctionType, IntType, PointerType, VoidType,
     },
 };
 
@@ -28,10 +28,17 @@ impl<'t> TypeKind<'t> {
         TypeKind::Int(LLVM_CONTEXT.custom_width_int_type(width))
     }
 
-    pub fn new_ptr(pointee: Self) -> Self {
+    pub fn new_ptr(&self) -> Self {
         TypeKind::Ptr {
             ty: LLVM_CONTEXT.ptr_type(AddressSpace::default()),
-            pointee: Box::new(pointee),
+            pointee: Box::new(self.clone()),
+        }
+    }
+
+    pub fn derefed(&self) -> Self {
+        match self {
+            TypeKind::Ptr { pointee, .. } => pointee.as_ref().clone(),
+            _ => panic!("Cannot dereference non-pointer type"),
         }
     }
 }
@@ -87,3 +94,13 @@ impl<'t> From<TypeKind<'t>> for AnyTypeEnum<'t> {
         }
     }
 }
+
+unsafe impl<'t> AsTypeRef for TypeKind<'t> {
+    fn as_type_ref(&self) -> inkwell::llvm_sys::prelude::LLVMTypeRef {
+        AnyTypeEnum::from(self.clone()).as_type_ref()
+    }
+}
+
+unsafe impl<'t> AnyType<'t> for TypeKind<'t> {}
+
+unsafe impl<'t> BasicType<'t> for TypeKind<'t> {}

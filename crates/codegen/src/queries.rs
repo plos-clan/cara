@@ -2,14 +2,14 @@ use std::sync::{Arc, LazyLock};
 
 use ast::{FunctionDef, visitor::BlockVisitor};
 use const_eval::queries::CONST_EVAL_PROVIDER;
-use inkwell::module::Module;
+use inkwell::{module::Module, values::AnyValue};
 use query::{DefId, Provider, QueryContext};
 use send_wrapper::SendWrapper;
 use uuid::Uuid;
 
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
-    info::{SymbolStack, Value},
+    info::{Symbol, SymbolStack, Value},
     types::get_llvm_type,
 };
 
@@ -70,7 +70,24 @@ fn codegen_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> SendWrapper<Co
         symbols: SymbolStack::new(),
         module,
         queries: ctx.clone(),
+        current_fn: function,
     };
+
+    for (id, param) in params.iter().enumerate() {
+        let ty = get_llvm_type(&LLVM_CONTEXT, &param.param_type);
+
+        ctx.symbols.pre_push(Symbol::ImmutableVar(
+            param.name.clone(),
+            Value::new_from(
+                function
+                    .get_nth_param(id as u32)
+                    .unwrap()
+                    .as_any_value_enum(),
+                ty,
+            ),
+        ));
+    }
+
     if let Some(value) = ctx.visit_block(block)
         && !matches!(value, Value::Void)
     {
