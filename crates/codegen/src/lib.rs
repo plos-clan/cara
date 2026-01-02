@@ -64,10 +64,16 @@ pub fn codegen(comp_unit: &CompUnit) {
 
     let main = queries.lookup_def_id("main").unwrap();
     println!("OK");
-    let CodegenResult { module, .. } = queries
+    let CodegenResult {
+        module: Some(module),
+        ..
+    } = queries
         .query_cached(&CODEGEN_PROVIDER, main)
         .unwrap()
-        .take();
+        .take()
+    else {
+        unreachable!()
+    };
 
     println!("OK");
 

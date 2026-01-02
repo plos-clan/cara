@@ -8,8 +8,10 @@ use crate::QueryContext;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ProviderId(u64);
 
+type ProviderFn<A, R> = Box<dyn Fn(Arc<QueryContext>, A) -> R + Send + Sync>;
+
 pub struct Provider<A, R> {
-    pub(crate) f: Box<dyn Fn(Arc<QueryContext>, A) -> R + Send + Sync>,
+    pub(crate) f: ProviderFn<A, R>,
     pub(crate) cache: RwLock<BTreeMap<A, R>>,
 }
 

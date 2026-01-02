@@ -117,24 +117,29 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             value.clone()
         } else {
             let def_id = self.queries.lookup_def_id(&name).unwrap();
-            println!("def id: {:?}", def_id);
             let CodegenResult { module, mut value } = self
                 .queries
                 .query_cached(&CODEGEN_PROVIDER, def_id)
                 .unwrap()
                 .take();
-            println!("query OK {:?}", value);
 
-            let name = match value {
-                Value::Function(f, _) => f.get_name().to_string_lossy().to_string(),
-                _ => panic!("Expected function value"),
-            };
+            if let Some(module) = module {
+                let name = match value {
+                    Value::Function(f, _) => f.get_name().to_string_lossy().to_string(),
+                    _ => unreachable!(),
+                };
 
-            self.module.link_in_module(module).unwrap();
-            if let Value::Function(_, ty) = value {
+                self.module.link_in_module(module).unwrap();
+
+                let Value::Function(_, ty) = value else {
+                    unreachable!();
+                };
                 value = Value::Function(self.module.get_function(&name).unwrap(), ty);
+
+                value
+            } else {
+                value
             }
-            value
         }
     }
 

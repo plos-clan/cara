@@ -61,9 +61,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     fn visit_lval(&mut self, lval: &LVal) -> Value {
         let name = lval.path.path.join(".");
         let def_id = self.ctx.lookup_def_id(name).unwrap();
-        self.ctx
-            .query(&CONST_EVAL_PROVIDER, def_id)
-            .unwrap()
+        self.ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap()
     }
 
     fn visit_number(&mut self, number: &Number) -> Value {
