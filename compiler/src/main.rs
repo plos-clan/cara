@@ -1,4 +1,6 @@
 const TEST_CODE: &str = r#"
+const const1 = 1;
+
 const main = extern C[main] fn() -> i32 {
     test_void();
     {

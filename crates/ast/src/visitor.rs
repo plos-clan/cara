@@ -37,6 +37,7 @@ pub trait ExpVisitor<V> {
                 let value = self.visit_exp(value);
                 self.visit_unary(op, value)
             }
+            Exp::Function(func) => self.visit_function(func),
         }
     }
     fn visit_array(&mut self, array: &Array) -> V;
@@ -50,6 +51,7 @@ pub trait ExpVisitor<V> {
     fn visit_number(&mut self, number: &Number) -> V;
     fn visit_str(&mut self, string: &str) -> V;
     fn visit_block(&mut self, block: &Block) -> V;
+    fn visit_function(&mut self, func: &FunctionDef) -> V;
 }
 
 pub trait BlockVisitor<V>: ExpVisitor<V> {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ast::{ConstDef, ConstInitialValue, FunctionDef, visitor::BlockVisitor};
+use ast::{ConstDef, ConstExp, ConstInitialValue, Exp, FunctionDef, visitor::BlockVisitor};
 use query::{DefId, QueryContext};
 
 use crate::{
@@ -14,13 +14,17 @@ pub fn codegen_provider<'g>(ctx: &QueryContext, arg: (Arc<Generator<'g>>, DefId)
     let ConstDef { initial_value, .. } = ctx.get_def(def_id).unwrap();
 
     match initial_value {
-        ConstInitialValue::Function(FunctionDef {
-            abi,
-            params,
-            return_type,
-            block,
-            span: _,
+        ConstInitialValue::Exp(ConstExp {
+            exp: Exp::Function(func),
         }) => {
+            let FunctionDef {
+                abi,
+                params,
+                return_type,
+                block,
+                span: _,
+            } = func.as_ref();
+
             let function_name = match abi {
                 ast::Abi::CAbi(name) => name.clone(),
                 _ => "".into(),

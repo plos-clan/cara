@@ -9,7 +9,6 @@ pub struct ConstDef {
 
 #[derive(Debug, Clone)]
 pub enum ConstInitialValue {
-    Function(FunctionDef),
     Exp(ConstExp),
 }
 

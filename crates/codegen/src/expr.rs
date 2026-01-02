@@ -115,4 +115,8 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             self.generator.query(&name).unwrap()
         }
     }
+
+    fn visit_function(&mut self, _func: &ast::FunctionDef) -> Value<'v> {
+        unreachable!()
+    }
 }

@@ -47,16 +47,6 @@ peg::parser! {
         }
 
         rule const_initial_value() -> ConstInitialValue
-        = v: (const_initial_value_fn() / const_initial_value_exp()) {
-            v
-        }
-
-        rule const_initial_value_fn() -> ConstInitialValue
-        = f: function_def() {
-            ConstInitialValue::Function(f)
-        }
-
-        rule const_initial_value_exp() -> ConstInitialValue
         = e: expr() {
             ConstInitialValue::Exp(ConstExp { exp: e })
         }
@@ -91,7 +81,11 @@ peg::parser! {
             Param { name, param_type: ty, span: Span::new(l, r) }
         }
 
-        rule expr() -> Exp = precedence!{
+        rule expr() -> Exp =
+            f: function_def() { Exp::Function(Box::new(f)) } /
+            e: expr_impl() { e }
+
+        rule expr_impl() -> Exp = precedence!{
             l: (@) _ "<" _ r: @ {
                 binary_op_rule!(l, r, Lt)
             }
