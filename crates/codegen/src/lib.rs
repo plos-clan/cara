@@ -1,6 +1,7 @@
 use std::{
+    ops::Deref,
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock},
 };
 
 use ast::CompUnit;
@@ -12,21 +13,36 @@ use inkwell::{
     passes::PassBuilderOptions,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
 };
-use query::{DefId, ProviderId, Providers, QueryContext};
+use query::QueryContext;
+use send_wrapper::SendWrapper;
 
 use crate::{
-    info::{SymbolStack, Value},
-    queries::codegen_provider,
+    info::SymbolStack,
+    queries::{CODEGEN_PROVIDER, CodegenResult},
 };
 
 mod defs;
 mod expr;
 mod info;
 mod program;
-mod queries;
+pub mod queries;
 mod types;
 
+struct LLVMContext(SendWrapper<Context>);
+
+impl Deref for LLVMContext {
+    type Target = Context;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+static LLVM_CONTEXT: LazyLock<LLVMContext> =
+    LazyLock::new(|| LLVMContext(SendWrapper::new(Context::create())));
+
 pub fn init() {
+    LazyLock::force(&LLVM_CONTEXT);
     Target::initialize_all(&InitializationConfig::default());
 }
 
@@ -44,11 +60,16 @@ pub fn codegen(comp_unit: &CompUnit) {
         )
         .unwrap();
 
-    let ctx = Context::create();
-    let generator = Arc::new(Generator::new(&ctx, comp_unit));
-    generator.query("main").unwrap();
+    let queries = QueryContext::new(comp_unit);
 
-    let module = generator.module.lock().unwrap();
+    let main = queries.lookup_def_id("main").unwrap();
+    println!("OK");
+    let CodegenResult { module, .. } = queries
+        .query_cached(&CODEGEN_PROVIDER, main)
+        .unwrap()
+        .take();
+
+    println!("OK");
 
     let passes: &[&str] = &[
         "instcombine",
@@ -78,59 +99,9 @@ pub fn codegen(comp_unit: &CompUnit) {
         .unwrap();
 }
 
-struct Generator<'g> {
-    ctx: &'g Context,
-    module: Mutex<Module<'g>>,
-    queries: QueryContext<'g>,
-    providers: Providers<(Arc<Self>, DefId), Value<'g>>,
-    codegen_provider: ProviderId,
-}
-
-unsafe impl Send for Generator<'_> {}
-unsafe impl Sync for Generator<'_> {}
-
-impl PartialEq for Generator<'_> {
-    fn eq(&self, _other: &Self) -> bool {
-        true
-    }
-}
-impl Eq for Generator<'_> {}
-
-impl PartialOrd for Generator<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for Generator<'_> {
-    fn cmp(&self, _other: &Self) -> std::cmp::Ordering {
-        std::cmp::Ordering::Equal
-    }
-}
-
-impl<'g> Generator<'g> {
-    fn new(ctx: &'g Context, comp_unit: &'g CompUnit) -> Self {
-        let module = Mutex::new(ctx.create_module("main"));
-        let queries = QueryContext::new(comp_unit);
-        let mut providers = Providers::new();
-        let codegen_provider = providers.register(Box::new(codegen_provider));
-        Generator {
-            ctx,
-            module,
-            queries,
-            providers,
-            codegen_provider,
-        }
-    }
-
-    pub fn query(self: &Arc<Self>, name: &str) -> Option<Value<'g>> {
-        let id = self.queries.lookup_def_id(name)?;
-        self.queries
-            .query_cached(&self.providers, self.codegen_provider, (self.clone(), id))
-    }
-}
-
 struct VisitorCtx<'v> {
     builder: Builder<'v>,
     symbols: SymbolStack<'v>,
-    generator: Arc<Generator<'v>>,
+    module: Module<'static>,
+    queries: Arc<QueryContext<'v>>,
 }

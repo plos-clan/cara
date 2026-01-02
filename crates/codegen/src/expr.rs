@@ -2,7 +2,11 @@ use inkwell::{types::BasicTypeEnum, values::AnyValue};
 
 use ast::{Array, BinaryOp, Call, LVal, visitor::ExpVisitor};
 
-use crate::{VisitorCtx, info::Value};
+use crate::{
+    LLVM_CONTEXT, VisitorCtx,
+    info::{TypeKind, Value},
+    queries::{CODEGEN_PROVIDER, CodegenResult},
+};
 
 impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_binary(&mut self, op: &BinaryOp, lhs: Value<'v>, rhs: Value<'v>) -> Value<'v> {
@@ -50,7 +54,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_number(&mut self, number: &ast::Number) -> Value<'v> {
-        Value::Int(self.generator.ctx.i32_type().const_int(number.num, true))
+        Value::Int(LLVM_CONTEXT.i32_type().const_int(number.num, true))
     }
 
     fn visit_str(&mut self, _string: &str) -> Value<'v> {
@@ -90,7 +94,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         match array {
             Array::List(values, _) => {
                 let values = values.iter().map(|e| self.visit_exp(e)).collect::<Vec<_>>();
-                let type_ = values[0].type_(self.generator.ctx);
+                let type_ = values[0].type_(&LLVM_CONTEXT);
 
                 let array = self
                     .builder
@@ -98,7 +102,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                     .unwrap();
                 Value::Pointer {
                     value: array,
-                    ty: self.generator.new_ptr(type_),
+                    ty: TypeKind::new_ptr(type_),
                 }
             }
             Array::Template(_, _, _) => {
@@ -112,7 +116,25 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         if let Some(value) = self.symbols.lookup(&name).map(|s| s.value()) {
             value.clone()
         } else {
-            self.generator.query(&name).unwrap()
+            let def_id = self.queries.lookup_def_id(&name).unwrap();
+            println!("def id: {:?}", def_id);
+            let CodegenResult { module, mut value } = self
+                .queries
+                .query_cached(&CODEGEN_PROVIDER, def_id)
+                .unwrap()
+                .take();
+            println!("query OK {:?}", value);
+
+            let name = match value {
+                Value::Function(f, _) => f.get_name().to_string_lossy().to_string(),
+                _ => panic!("Expected function value"),
+            };
+
+            self.module.link_in_module(module).unwrap();
+            if let Value::Function(_, ty) = value {
+                value = Value::Function(self.module.get_function(&name).unwrap(), ty);
+            }
+            value
         }
     }
 

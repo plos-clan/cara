@@ -1,15 +1,28 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use ast::{ConstDef, ConstExp, ConstInitialValue, Exp, FunctionDef, visitor::BlockVisitor};
-use query::{DefId, QueryContext};
+use inkwell::module::Module;
+use query::{DefId, Provider, QueryContext};
+use send_wrapper::SendWrapper;
+use uuid::Uuid;
 
 use crate::{
-    Generator, VisitorCtx,
+    LLVM_CONTEXT, VisitorCtx,
     info::{SymbolStack, Value},
+    types::get_llvm_type,
 };
 
-pub fn codegen_provider<'g>(ctx: &QueryContext, arg: (Arc<Generator<'g>>, DefId)) -> Value<'g> {
-    let (generator, def_id) = arg;
+#[derive(Clone)]
+pub struct CodegenResult {
+    pub module: Module<'static>,
+    pub value: Value<'static>,
+}
+
+pub static CODEGEN_PROVIDER: LazyLock<Provider<DefId, SendWrapper<CodegenResult>>> =
+    LazyLock::new(|| Provider::new(codegen_provider));
+
+fn codegen_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> SendWrapper<CodegenResult> {
+    let module: Module<'static> = LLVM_CONTEXT.create_module("main");
 
     let ConstDef { initial_value, .. } = ctx.get_def(def_id).unwrap();
 
@@ -27,32 +40,30 @@ pub fn codegen_provider<'g>(ctx: &QueryContext, arg: (Arc<Generator<'g>>, DefId)
 
             let function_name = match abi {
                 ast::Abi::CAbi(name) => name.clone(),
-                _ => "".into(),
+                _ => Uuid::new_v4().to_string(),
             };
 
             let mut param_types = Vec::new();
             for param in params {
-                param_types.push(generator.visit_type(&param.param_type));
+                param_types.push(get_llvm_type(&LLVM_CONTEXT, &param.param_type));
             }
 
-            let return_type = generator.visit_type(return_type);
+            let return_type = get_llvm_type(&LLVM_CONTEXT, return_type);
             let function_type = return_type.function(param_types);
-            let function = generator.module.lock().unwrap().add_function(
-                &function_name,
-                function_type.as_function_type(),
-                None,
-            );
+            let function =
+                module.add_function(&function_name, function_type.as_function_type(), None);
             function.set_call_conventions(0); // C
             let result = Value::Function(function, return_type);
 
-            let entry_bb = generator.ctx.append_basic_block(function, "entry");
-            let builder = generator.ctx.create_builder();
+            let entry_bb = LLVM_CONTEXT.append_basic_block(function, "entry");
+            let builder = LLVM_CONTEXT.create_builder();
             builder.position_at_end(entry_bb);
 
             let mut ctx = VisitorCtx {
                 builder,
                 symbols: SymbolStack::new(),
-                generator: generator.clone(),
+                module,
+                queries: ctx.clone(),
             };
             if let Some(value) = ctx.visit_block(block)
                 && !matches!(value, Value::Void)
@@ -69,7 +80,10 @@ pub fn codegen_provider<'g>(ctx: &QueryContext, arg: (Arc<Generator<'g>>, DefId)
                 ctx.builder.build_return(None).unwrap();
             }
 
-            result
+            SendWrapper::new(CodegenResult {
+                module: ctx.module,
+                value: result,
+            })
         }
         ConstInitialValue::Exp(_) => unimplemented!(),
     }

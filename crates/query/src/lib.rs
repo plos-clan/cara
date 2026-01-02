@@ -1,6 +1,4 @@
-#![feature(tuple_trait)]
-
-use std::{collections::BTreeMap, marker::Tuple};
+use std::{collections::BTreeMap, sync::Arc};
 
 use ast::{CompUnit, ConstDef, GlobalItem};
 pub use defs::*;
@@ -16,52 +14,44 @@ pub struct QueryContext<'d> {
 }
 
 impl<'d> QueryContext<'d> {
-    pub fn new(ast: &'d CompUnit) -> Self {
+    pub fn new(ast: &'d CompUnit) -> Arc<Self> {
         let mut consts = BTreeMap::new();
         for GlobalItem::ConstDef(const_def) in &ast.global_items {
             let id = DefId(consts.len());
             consts.insert(id, const_def);
         }
-        Self {
+        Arc::new(Self {
             consts,
-            thread_pool: ThreadPoolBuilder::new().build().unwrap(),
-        }
+            thread_pool: ThreadPoolBuilder::new()
+                .use_current_thread()
+                .num_threads(1)
+                .build()
+                .unwrap(),
+        })
     }
 }
 
 impl<'d> QueryContext<'d> {
-    pub fn query<A: Tuple + Send + Sync, R: Send + Sync>(
-        &self,
-        providers: &Providers<A, R>,
-        provider: ProviderId,
+    pub fn query<A: Send + Sync, R: Send + Sync>(
+        self: &Arc<Self>,
+        provider: &Provider<A, R>,
         arg: A,
     ) -> Option<R> {
-        let provider = providers.providers.get(&provider)?;
-
-        Some(self.thread_pool.install(|| provider(self, arg)))
+        Some(self.thread_pool.install(|| (provider.f)(self.clone(), arg)))
     }
 
-    pub fn query_cached<A: Tuple + Ord + Send + Sync + Clone, R: Send + Sync + Clone>(
-        &self,
-        providers: &Providers<A, R>,
-        provider: ProviderId,
+    pub fn query_cached<A: Ord + Send + Sync + Clone, R: Send + Sync + Clone>(
+        self: &Arc<Self>,
+        provider: &Provider<A, R>,
         arg: A,
     ) -> Option<R> {
-        if let Some(cache) = providers.cache.read().unwrap().get(&provider)
-            && let Some(value) = cache.get(&arg)
-        {
+        if let Some(value) = provider.cache.read().unwrap().get(&arg) {
             return Some(value.clone());
         }
 
-        let result = self.query(providers, provider, arg.clone());
+        let result = self.query(provider, arg.clone());
         if let Some(result) = result.clone() {
-            providers
-                .cache
-                .write()
-                .unwrap()
-                .entry(provider)
-                .or_default()
-                .insert(arg, result.clone());
+            provider.cache.write().unwrap().insert(arg, result.clone());
         }
         result
     }

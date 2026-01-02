@@ -6,7 +6,7 @@ use inkwell::{
     },
 };
 
-use crate::Generator;
+use crate::LLVM_CONTEXT;
 
 #[derive(Debug, Clone)]
 pub enum TypeKind<'t> {
@@ -19,18 +19,18 @@ pub enum TypeKind<'t> {
     },
 }
 
-impl<'t> Generator<'t> {
-    pub fn new_void(&self) -> TypeKind<'t> {
-        TypeKind::Void(self.ctx.void_type())
+impl<'t> TypeKind<'t> {
+    pub fn new_void() -> Self {
+        TypeKind::Void(LLVM_CONTEXT.void_type())
     }
 
-    pub fn new_int(&self, width: u32) -> TypeKind<'t> {
-        TypeKind::Int(self.ctx.custom_width_int_type(width))
+    pub fn new_int(width: u32) -> Self {
+        TypeKind::Int(LLVM_CONTEXT.custom_width_int_type(width))
     }
 
-    pub fn new_ptr(&self, pointee: TypeKind<'t>) -> TypeKind<'t> {
+    pub fn new_ptr(pointee: Self) -> Self {
         TypeKind::Ptr {
-            ty: self.ctx.ptr_type(AddressSpace::default()),
+            ty: LLVM_CONTEXT.ptr_type(AddressSpace::default()),
             pointee: Box::new(pointee),
         }
     }

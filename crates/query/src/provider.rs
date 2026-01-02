@@ -1,37 +1,26 @@
-use std::{collections::BTreeMap, marker::Tuple, sync::RwLock};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, RwLock},
+};
 
 use crate::QueryContext;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ProviderId(u64);
 
-type Provider<A, R> = Box<dyn Fn(&QueryContext, A) -> R + Send + Sync>;
-
-pub struct Providers<A: Tuple, R> {
-    pub(crate) providers: BTreeMap<ProviderId, Provider<A, R>>,
-    pub(crate) cache: RwLock<BTreeMap<ProviderId, BTreeMap<A, R>>>,
+pub struct Provider<A, R> {
+    pub(crate) f: Box<dyn Fn(Arc<QueryContext>, A) -> R + Send + Sync>,
+    pub(crate) cache: RwLock<BTreeMap<A, R>>,
 }
 
-impl<A: Tuple, R> Providers<A, R> {
-    pub fn new() -> Self {
+impl<A, R> Provider<A, R> {
+    pub fn new<F>(f: F) -> Self
+    where
+        F: Fn(Arc<QueryContext>, A) -> R + Send + Sync + 'static,
+    {
         Self {
-            providers: BTreeMap::new(),
+            f: Box::new(f),
             cache: RwLock::new(BTreeMap::new()),
         }
-    }
-}
-
-impl<A: Tuple, R> Default for Providers<A, R> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<A: Tuple, R> Providers<A, R> {
-    pub fn register(&mut self, provider: Provider<A, R>) -> ProviderId {
-        let id = ProviderId(self.providers.len() as u64);
-        self.providers.insert(id, provider);
-        self.cache.write().unwrap().insert(id, Default::default());
-        id
     }
 }

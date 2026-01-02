@@ -19,9 +19,6 @@ pub enum Value<'v> {
     Void,
 }
 
-unsafe impl Send for Value<'_> {}
-unsafe impl Sync for Value<'_> {}
-
 impl<'v> Value<'v> {
     pub fn type_(&self, ctx: &'v Context) -> TypeKind<'v> {
         match self {
@@ -44,6 +41,7 @@ impl<'v> Value<'v> {
                 value: v,
                 ty: ty.clone(),
             },
+            AnyValueEnum::FunctionValue(v) => Value::Function(v, ty.clone()),
             _ => unreachable!(),
         }
     }
