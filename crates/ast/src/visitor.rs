@@ -79,9 +79,14 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
                 None
             }
             Statement::Return(r#return) => self.visit_return(r#return),
+            Statement::InlineAsm(inline_asm) => {
+                self.visit_inline_asm(inline_asm);
+                None
+            }
         }
     }
     /// If this returns `Some`, the function returns the value.
     fn visit_return(&mut self, return_stmt: &Return) -> Option<V>;
     fn visit_var_def(&mut self, var_def: &VarDef);
+    fn visit_inline_asm(&mut self, inline_asm: &InlineAsm);
 }

@@ -73,14 +73,20 @@ peg::parser! {
         rule statement_impl() -> Statement
         = r: return_stmt() {
             Statement::Return(r)
-        } /
-        e: expr() {
+        } / i: inline_asm() {
+            Statement::InlineAsm(i)
+        } / e: expr() {
             Statement::Exp(e)
         }
 
         rule return_stmt() -> Return
         = l: position!() _ "return" _ value: expr()? _ r: position!() {
             Return { value, span: Span::new(l, r) }
+        }
+
+        rule inline_asm() -> InlineAsm
+        = l: position!() _ "asm" _ "{" _ asm: (string() ** ("," _)) _ ","? _ "}" _ r: position!() {
+            InlineAsm { asm, span: Span::new(l, r) }
         }
 
         rule param() -> Param
@@ -277,9 +283,15 @@ peg::parser! {
           }
 
         rule string() -> String
-          = r#""""# i:$([^'"']*) r#""""# {
-            i.to_string()
-        }
+        = "\""  s: string_character()* "\"" { s.into_iter().collect() }
+
+        rule string_character() -> char
+            = [^ '"' | '\\' | '\r' | '\n' ]
+            / "\\n" { '\n' }
+            / "\\u{" value:$(['0'..='9' | 'a'..='f' | 'A'..='F']+) "}" {?
+                u32::from_str_radix(value, 16).ok().and_then(char::from_u32).ok_or("valid unicode code point")
+            }
+            / expected!("valid escape sequence")
 
         rule whitespace() = quiet!{[' ' | '\n' | '\t']*}
         rule _() = whitespace()

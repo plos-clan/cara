@@ -28,10 +28,17 @@ pub enum BlockItem {
 pub enum Statement {
     Return(Return),
     Exp(Exp),
+    InlineAsm(InlineAsm),
 }
 
 #[derive(Debug, Clone)]
 pub struct Return {
     pub value: Option<Exp>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct InlineAsm {
+    pub asm: Vec<String>,
     pub span: Span,
 }

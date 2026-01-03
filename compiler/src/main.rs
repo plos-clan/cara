@@ -6,9 +6,12 @@ const main = extern C[main] fn() -> i32 {
     
     let mut return_code = return_code_getter(return_code);
     
-    {
-        return return_code;
-    }
+    asm {
+        "mov rax, 42",
+        "ret",
+    };
+    
+    0
 };
 
 const test_void = fn() -> void {

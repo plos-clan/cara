@@ -5,7 +5,7 @@ use ast::{
 
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
-    info::{Symbol, Value},
+    info::{Symbol, TypeKind, Value},
 };
 
 impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
@@ -52,5 +52,23 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
             self.symbols
                 .push(Symbol::ImmutableVar(var_def.name.clone(), value));
         }
+    }
+
+    fn visit_inline_asm(&mut self, inline_asm: &ast::InlineAsm) {
+        let fn_ty = TypeKind::new_void().function(Vec::new()).as_function_type();
+
+        let asm_fn = LLVM_CONTEXT.create_inline_asm(
+            fn_ty,
+            inline_asm.asm.join("\n"),
+            "".into(),
+            true,
+            false,
+            None,
+            false,
+        );
+
+        self.builder
+            .build_indirect_call(fn_ty, asm_fn, &[], "")
+            .unwrap();
     }
 }
