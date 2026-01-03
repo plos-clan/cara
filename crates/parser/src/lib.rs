@@ -92,10 +92,6 @@ peg::parser! {
             e: expr_impl() { e }
 
         rule expr_impl() -> Exp = precedence!{
-            lhs: (@) _ "=" _ rhs: @ {
-                let span = Span::new(lhs.span().start(), rhs.span().end());
-                Exp::Assign(Box::new(Assign { lhs, rhs, span }))
-            }
             l: position!() _ "return" __ rhs: @ {
                 let span = Span::new(l, rhs.span().end());
                 Exp::Return(Box::new(Return { value: Some(rhs), span }))
@@ -188,6 +184,11 @@ peg::parser! {
                 }))
             }
             --
+            i: if_exp() { Exp::IfExp(Box::new(i)) }
+            lhs: (@) _ "=" _ rhs: @ {
+                let span = Span::new(lhs.span().start(), rhs.span().end());
+                Exp::Assign(Box::new(Assign { lhs, rhs, span }))
+            }
             l: position!() "(" _ ")" r: position!() {
                 let span = Span::new(l, r);
                 Exp::Unit(span)
@@ -201,6 +202,27 @@ peg::parser! {
             g: get_addr() { Exp::GetAddr(Box::new(g)) }
             b: block() { Exp::Block(Box::new(b)) }
         }
+
+        rule if_exp() -> IfExp
+             = l: position!() "if" __ c: expr() _ t: block() _
+                e: ("else" _ b: block() {b})? r: position!() {
+                IfExp {
+                    condition: c,
+                    then_branch: t,
+                    else_branch: e,
+                    else_if: None,
+                    span: Span::new(l, r)
+                }
+            } / l: position!() "if" __ c: expr() _ t: block() _
+                i: ("else" __ i: if_exp() {i})? r: position!() {
+                IfExp {
+                    condition: c,
+                    then_branch: t,
+                    else_branch: None,
+                    else_if: i.map(|i| Box::new(i)),
+                    span: Span::new(l, r)
+                }
+            }
 
         rule deref() -> Deref
               = l: position!() "*" _ e: expr() r: position!() {
@@ -229,9 +251,14 @@ peg::parser! {
         }
 
         rule number() -> Exp
-            = l: position!() n:$(['0'..='9']+) r: position!() {
-                Exp::Number(Number { num: n.parse().unwrap(), span: Span::new(l, r) })
+            = l: position!() n:$(['0'..='9']+) w: ("i" w: width() {w})? r: position!() {
+                Exp::Number(Number { num: n.parse().unwrap(), ty: w.map(|w| (true, w)), span: Span::new(l, r) })
         }
+
+        rule width() -> u32
+             = n: $(['0'..='9']+) {
+                n.parse().unwrap()
+            }
 
         rule path() -> Path
             = s: position!() i:identifier() e: position!() {

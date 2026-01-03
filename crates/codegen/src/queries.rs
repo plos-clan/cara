@@ -76,7 +76,8 @@ fn codegen_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> SendWrapper<Co
         symbols: SymbolStack::new(),
         module,
         queries: ctx.clone(),
-        current_fn: function,
+        current_fn: result.clone(),
+        current_def_id: def_id,
     };
 
     for (id, param) in params.iter().enumerate() {

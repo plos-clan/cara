@@ -43,6 +43,7 @@ pub enum Exp {
     Function(Box<FunctionDef>),
     Assign(Box<Assign>),
     Return(Box<Return>),
+    IfExp(Box<IfExp>),
     Unit(Span),
 }
 
@@ -64,6 +65,7 @@ impl Exp {
             Exp::Function(func) => func.span,
             Exp::Assign(assign) => assign.span,
             Exp::Return(return_) => return_.span,
+            Exp::IfExp(if_exp) => if_exp.span,
             Exp::Unit(span) => *span,
         }
     }
@@ -104,6 +106,7 @@ pub struct GetAddr {
 #[derive(Debug, Clone)]
 pub struct Number {
     pub num: u64,
+    pub ty: Option<(bool, u32)>,
     pub span: Span,
 }
 
@@ -123,6 +126,15 @@ pub struct Assign {
 #[derive(Debug, Clone)]
 pub struct Return {
     pub value: Option<Exp>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct IfExp {
+    pub condition: Exp,
+    pub then_branch: Block,
+    pub else_branch: Option<Block>,
+    pub else_if: Option<Box<IfExp>>,
     pub span: Span,
 }
 

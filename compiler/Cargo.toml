@@ -7,3 +7,6 @@ edition.workspace = true
 parser.workspace = true
 anyhow.workspace = true
 codegen.workspace = true
+
+[features]
+trace = ["parser/trace"]

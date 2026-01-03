@@ -39,6 +39,7 @@ pub trait ExpVisitor<V> {
             Exp::Function(func) => self.visit_function(func),
             Exp::Assign(assign) => self.visit_assign(assign),
             Exp::Return(return_) => self.visit_return(return_),
+            Exp::IfExp(if_exp) => self.visit_if_exp(if_exp),
             Exp::Unit(_) => self.visit_unit(),
         }
     }
@@ -62,6 +63,7 @@ pub trait ExpVisitor<V> {
     fn visit_function(&mut self, func: &FunctionDef) -> V;
     fn visit_unit(&mut self) -> V;
     fn visit_assign(&mut self, assign: &Assign) -> V;
+    fn visit_if_exp(&mut self, if_exp: &IfExp) -> V;
     /// If this returns `Some`, the function returns the value.
     fn visit_return(&mut self, return_stmt: &Return) -> V;
 }

@@ -7,3 +7,6 @@ edition.workspace = true
 peg = "0.8.5"
 ast.workspace = true
 anyhow.workspace = true
+
+[features]
+trace = ["peg/trace"]

@@ -1,32 +1,18 @@
 const TEST_CODE: &str = r#"
 const return_code = 0;
 
-const main = extern C[main] fn() -> i32 {
-    test_void();
-    
-    let mut test = ();
-    let mut return_code = return_code_getter(return_code);
-    
-    return_code = 10;
-    test = ();
-    
-    asm {
-        "mov rax, 42",
-        "ret",
-    };
-    
-    return return_code;
+const main = extern C[main] fn() -> i64 {
+    fib(10i64)
 };
 
-const test_void = fn() -> () {
-    let mut test = ();
-    return test;
+const fib = fn(n: i64) -> i64 {
+    if n <= 1i64 {
+        n
+    } else {
+        fib(n - 1i64) + fib(n - 2i64)
+    }
 };
 
-const return_code_getter = fn(return_code: i32) -> i32 {
-    let return_code = return_code;
-    return_code
-};
 "#;
 
 fn main() -> anyhow::Result<()> {

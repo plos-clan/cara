@@ -12,9 +12,8 @@ use inkwell::{
     module::Module,
     passes::PassBuilderOptions,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
-    values::FunctionValue,
 };
-use query::QueryContext;
+use query::{DefId, QueryContext};
 use send_wrapper::SendWrapper;
 
 use crate::{
@@ -110,14 +109,15 @@ struct VisitorCtx<'v> {
     symbols: SymbolStack<'v>,
     module: Module<'static>,
     queries: Arc<QueryContext<'v>>,
-    current_fn: FunctionValue<'v>,
+    current_fn: Value<'v>,
+    current_def_id: DefId,
 }
 
 impl<'v> VisitorCtx<'v> {
     fn create_entry_bb_alloca(&self, name: &str, ty: TypeKind<'v>) -> Value<'v> {
         let builder = LLVM_CONTEXT.create_builder();
 
-        let entry_bb = self.current_fn.get_first_basic_block().unwrap();
+        let entry_bb = self.current_fn.as_fn().get_first_basic_block().unwrap();
 
         match entry_bb.get_first_instruction() {
             Some(first_ins) => {

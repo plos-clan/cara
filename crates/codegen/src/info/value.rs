@@ -31,6 +31,13 @@ impl<'v> Value<'v> {
         v
     }
 
+    pub fn as_fn(&self) -> FunctionValue<'v> {
+        let Value::Function(f, _) = self else {
+            unreachable!()
+        };
+        *f
+    }
+
     pub fn get_pointer(&self) -> PointerValue<'v> {
         match self {
             Value::Pointer { value, .. } => value.clone(),

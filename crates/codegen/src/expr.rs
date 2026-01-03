@@ -73,7 +73,12 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_number(&mut self, number: &ast::Number) -> Value<'v> {
-        Value::Int(LLVM_CONTEXT.i32_type().const_int(number.num, true))
+        let ty = if let Some((_, width)) = number.ty {
+            LLVM_CONTEXT.custom_width_int_type(width)
+        } else {
+            LLVM_CONTEXT.i32_type()
+        };
+        Value::Int(ty.const_int(number.num, true))
     }
 
     fn visit_str(&mut self, _string: &str) -> Value<'v> {
@@ -140,6 +145,11 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             }
         } else {
             let def_id = self.queries.lookup_def_id(&name).unwrap();
+
+            if self.current_def_id == def_id {
+                return self.current_fn.clone();
+            }
+
             let CodegenResult { module, mut value } = self
                 .queries
                 .query_cached(&CODEGEN_PROVIDER, def_id)
@@ -177,7 +187,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_assign(&mut self, assign: &Assign) -> Value<'v> {
         let lhs = self.visit_left_value(&assign.lhs);
         let rhs = self.visit_right_value(&assign.rhs);
-        
+
         if let Value::Unit = rhs {
             return Value::Unit;
         }
@@ -203,5 +213,53 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         }
 
         Value::Unit
+    }
+
+    fn visit_if_exp(&mut self, if_exp: &ast::IfExp) -> Value<'v> {
+        let condition = self
+            .visit_right_value(&if_exp.condition)
+            .as_int(&self.builder);
+        let condition = self
+            .builder
+            .build_bit_cast(condition, LLVM_CONTEXT.bool_type(), "")
+            .unwrap()
+            .into_int_value();
+
+        let current_fn = self.current_fn.as_fn();
+        let then_block = LLVM_CONTEXT.append_basic_block(current_fn, "then");
+        let else_block = LLVM_CONTEXT.append_basic_block(current_fn, "else");
+        let end_block = LLVM_CONTEXT.append_basic_block(current_fn, "end");
+
+        self.builder
+            .build_conditional_branch(condition, then_block, else_block)
+            .unwrap();
+
+        self.builder.position_at_end(then_block);
+        let then_value = self.visit_block(&if_exp.then_branch);
+        self.builder.build_unconditional_branch(end_block).unwrap();
+
+        self.builder.position_at_end(else_block);
+        let (else_present, else_value) = if let Some(else_block) = if_exp.else_branch.as_ref() {
+            let else_value = self.visit_block(&else_block);
+            (true, else_value)
+        } else if let Some(else_if) = if_exp.else_if.as_ref() {
+            let else_value = self.visit_if_exp(else_if);
+            (true, else_value)
+        } else {
+            (false, Value::Unit)
+        };
+        self.builder.build_unconditional_branch(end_block).unwrap();
+
+        self.builder.position_at_end(end_block);
+        if else_present && !matches!(then_value, Value::Unit) {
+            let phi = self
+                .builder
+                .build_phi(then_value.type_(), "if_result")
+                .unwrap();
+            phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
+            Value::new_from(phi.as_any_value_enum(), then_value.type_())
+        } else {
+            Value::Unit
+        }
     }
 }
