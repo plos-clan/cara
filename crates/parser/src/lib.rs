@@ -182,6 +182,10 @@ peg::parser! {
                 }))
             }
             --
+            l: position!() "(" _ ")" r: position!() {
+                let span = Span::new(l, r);
+                Exp::Unit(span)
+            }
             "(" _ e: expr() _ ")" {
                 e
             }
@@ -240,32 +244,14 @@ peg::parser! {
             }
 
         rule type_enum() -> TypeEnum
-            = "i8" {
-                TypeEnum::I8
-            }
-            / "i16" {
-                TypeEnum::I16
-            }
-            / "i32" {
-                TypeEnum::I32
-            }
-            / "i64" {
-                TypeEnum::I64
-            }
-            / "u8" {
-                TypeEnum::U8
-            }
-            / "u16" {
-                TypeEnum::U16
-            }
-            / "u32" {
-                TypeEnum::U32
-            }
-            / "u64" {
-                TypeEnum::U64
-            }
-            / "void" {
-                TypeEnum::Void
+            = "i" n:$(['0'..='9']+) {
+                let width = n.parse().unwrap();
+                TypeEnum::Signed(width)
+            } / "u" n:$(['0'..='9']+) {
+                let width = n.parse().unwrap();
+                TypeEnum::Unsigned(width)
+            } / "(" _ ")" {
+                TypeEnum::Unit
             }
 
         rule type_() -> Type

@@ -57,7 +57,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_block(&mut self, block: &ast::Block) -> Value<'v> {
         use ast::visitor::BlockVisitor;
-        <Self as BlockVisitor<Value<'v>>>::visit_block(self, block).unwrap_or(Value::Void)
+        <Self as BlockVisitor<Value<'v>>>::visit_block(self, block).unwrap_or(Value::Unit)
     }
 
     fn visit_deref(&mut self, _deref: &ast::Deref) -> Value<'v> {
@@ -168,5 +168,9 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_function(&mut self, _func: &ast::FunctionDef) -> Value<'v> {
         unreachable!()
+    }
+
+    fn visit_unit(&mut self) -> Value<'v> {
+        Value::Unit
     }
 }

@@ -4,6 +4,7 @@ const return_code = 0;
 const main = extern C[main] fn() -> i32 {
     test_void();
     
+    let mut test = ();
     let mut return_code = return_code_getter(return_code);
     
     asm {
@@ -14,8 +15,9 @@ const main = extern C[main] fn() -> i32 {
     return return_code;
 };
 
-const test_void = fn() -> void {
-    return;
+const test_void = fn() -> () {
+    let mut test = ();
+    return test;
 };
 
 const return_code_getter = fn(return_code: i32) -> i32 {

@@ -6,7 +6,7 @@ use inkwell::{
     },
 };
 
-use crate::{LLVM_CONTEXT, info::TypeKind};
+use crate::info::TypeKind;
 
 #[derive(Debug, Clone)]
 pub enum Value<'v> {
@@ -20,7 +20,7 @@ pub enum Value<'v> {
         value: PointerValue<'v>,
         value_ty: TypeKind<'v>,
     },
-    Void,
+    Unit,
 }
 
 impl<'v> Value<'v> {
@@ -51,15 +51,15 @@ impl<'v> Value<'v> {
             Value::Function(f, _) => TypeKind::Function(f.get_type()),
             Value::Pointer { ty, .. } => ty.clone(),
             Value::Alloca { value_ty, .. } => value_ty.new_ptr(),
-            Value::Void => TypeKind::Void(LLVM_CONTEXT.void_type()),
+            Value::Unit => TypeKind::new_unit(),
         }
     }
 }
 
 impl<'v> Value<'v> {
     pub fn new_from(value: AnyValueEnum<'v>, ty: TypeKind<'v>) -> Self {
-        if matches!(ty, TypeKind::Void(_)) {
-            return Value::Void;
+        if matches!(ty, TypeKind::Unit(_)) {
+            return Value::Unit;
         }
         match value {
             AnyValueEnum::IntValue(v) => Value::Int(v),
@@ -90,7 +90,7 @@ unsafe impl<'v> AsValueRef for Value<'v> {
             Value::Function(v, _) => v.as_value_ref(),
             Value::Pointer { value, .. } => value.as_value_ref(),
             Value::Alloca { value, .. } => value.as_value_ref(),
-            Value::Void => unreachable!(),
+            Value::Unit => unreachable!(),
         }
     }
 }

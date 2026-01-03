@@ -21,7 +21,7 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
         if let Some(value) = ret.value.as_ref() {
             let value = self.visit_right_value(value);
             self.builder
-                .build_return(if matches!(value, Value::Void) {
+                .build_return(if matches!(value, Value::Unit) {
                     None
                 } else {
                     Some(&value)
@@ -37,7 +37,7 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
         let value = self.visit_right_value(&var_def.initial_value);
 
-        if var_def.mutable {
+        if var_def.mutable && !matches!(value, Value::Unit) {
             let ty = value.type_();
             let alloca = self.create_entry_bb_alloca(&var_def.name, ty);
             let Value::Alloca { value: ptr, .. } = alloca else {
@@ -55,7 +55,7 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_inline_asm(&mut self, inline_asm: &ast::InlineAsm) {
-        let fn_ty = TypeKind::new_void().function(Vec::new()).as_function_type();
+        let fn_ty = TypeKind::new_unit().function(Vec::new()).as_function_type();
 
         let asm_fn = LLVM_CONTEXT.create_inline_asm(
             fn_ty,

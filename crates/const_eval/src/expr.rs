@@ -86,4 +86,8 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
             UnaryOp::Pos => Value::Int(value),
         }
     }
+
+    fn visit_unit(&mut self) -> Value {
+        Value::Unit
+    }
 }

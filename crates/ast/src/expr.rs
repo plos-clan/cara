@@ -41,6 +41,7 @@ pub enum Exp {
     Call(Box<Call>),
     Block(Box<Block>),
     Function(Box<FunctionDef>),
+    Unit(Span),
 }
 
 impl Exp {
@@ -59,6 +60,7 @@ impl Exp {
             Exp::Call(call) => call.span,
             Exp::Block(block) => block.span,
             Exp::Function(func) => func.span,
+            Exp::Unit(span) => *span,
         }
     }
 }

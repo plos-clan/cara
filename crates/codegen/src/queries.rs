@@ -33,6 +33,12 @@ fn codegen_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> SendWrapper<Co
                 value: Value::Int(LLVM_CONTEXT.i32_type().const_int(int as u64, true)),
             });
         }
+        const_eval::Value::Unit => {
+            return SendWrapper::new(CodegenResult {
+                module: None,
+                value: Value::Unit,
+            });
+        }
     };
 
     let module = LLVM_CONTEXT.create_module("main");
@@ -89,7 +95,7 @@ fn codegen_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> SendWrapper<Co
     }
 
     if let Some(value) = ctx.visit_block(block)
-        && !matches!(value, Value::Void)
+        && !matches!(value, Value::Unit)
     {
         ctx.builder.build_return(Some(&value)).unwrap();
     }

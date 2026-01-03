@@ -10,7 +10,7 @@ use crate::LLVM_CONTEXT;
 
 #[derive(Debug, Clone)]
 pub enum TypeKind<'t> {
-    Void(VoidType<'t>),
+    Unit(VoidType<'t>),
     Function(FunctionType<'t>),
     Int(IntType<'t>),
     Ptr {
@@ -20,8 +20,8 @@ pub enum TypeKind<'t> {
 }
 
 impl<'t> TypeKind<'t> {
-    pub fn new_void() -> Self {
-        TypeKind::Void(LLVM_CONTEXT.void_type())
+    pub fn new_unit() -> Self {
+        TypeKind::Unit(LLVM_CONTEXT.void_type())
     }
 
     pub fn new_int(width: u32) -> Self {
@@ -50,7 +50,7 @@ impl<'t> TypeKind<'t> {
             .map(BasicMetadataTypeEnum::from)
             .collect::<Vec<_>>();
         match self {
-            TypeKind::Void(void_type) => TypeKind::Function(void_type.fn_type(&arg_types, false)),
+            TypeKind::Unit(void_type) => TypeKind::Function(void_type.fn_type(&arg_types, false)),
             TypeKind::Int(int_type) => TypeKind::Function(int_type.fn_type(&arg_types, false)),
             _ => unreachable!(),
         }
@@ -87,7 +87,7 @@ impl<'t> From<TypeKind<'t>> for BasicMetadataTypeEnum<'t> {
 impl<'t> From<TypeKind<'t>> for AnyTypeEnum<'t> {
     fn from(value: TypeKind<'t>) -> Self {
         match value {
-            TypeKind::Void(void_type) => void_type.into(),
+            TypeKind::Unit(void_type) => void_type.into(),
             TypeKind::Function(func_type) => func_type.into(),
             TypeKind::Int(int_type) => int_type.into(),
             TypeKind::Ptr { ty, pointee: _ } => ty.into(),
