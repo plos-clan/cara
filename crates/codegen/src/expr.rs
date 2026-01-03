@@ -139,7 +139,6 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                 Symbol::ImmutableVar(_, value) => value.clone(),
             }
         } else {
-            println!("Look up {}", name);
             let def_id = self.queries.lookup_def_id(&name).unwrap();
             let CodegenResult { module, mut value } = self
                 .queries
@@ -178,6 +177,10 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_assign(&mut self, assign: &Assign) -> Value<'v> {
         let lhs = self.visit_left_value(&assign.lhs);
         let rhs = self.visit_right_value(&assign.rhs);
+        
+        if let Value::Unit = rhs {
+            return Value::Unit;
+        }
 
         let ptr = lhs.get_pointer();
         self.builder.build_store(ptr, rhs).unwrap();
