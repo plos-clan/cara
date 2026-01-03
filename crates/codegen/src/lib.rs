@@ -128,9 +128,9 @@ impl<'v> VisitorCtx<'v> {
             }
         }
 
-        Value::Pointer {
+        Value::Alloca {
             value: builder.build_alloca(ty.clone(), name).unwrap(),
-            ty: ty.new_ptr(),
+            value_ty: ty,
         }
     }
 }

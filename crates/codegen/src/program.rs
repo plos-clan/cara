@@ -19,7 +19,7 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_return(&mut self, ret: &Return) -> Option<Value<'v>> {
         if let Some(value) = ret.value.as_ref() {
-            let value = self.visit_exp(value);
+            let value = self.visit_right_value(value);
             self.builder
                 .build_return(if matches!(value, Value::Void) {
                     None
@@ -35,12 +35,12 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
-        let value = self.visit_exp(&var_def.initial_value);
+        let value = self.visit_right_value(&var_def.initial_value);
 
         if var_def.mutable {
-            let ty = value.type_(&LLVM_CONTEXT);
+            let ty = value.type_();
             let alloca = self.create_entry_bb_alloca(&var_def.name, ty);
-            let Value::Pointer { value: ptr, .. } = alloca else {
+            let Value::Alloca { value: ptr, .. } = alloca else {
                 unreachable!()
             };
 

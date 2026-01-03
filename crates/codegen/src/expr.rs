@@ -1,6 +1,6 @@
 use inkwell::{types::BasicTypeEnum, values::AnyValue};
 
-use ast::{Array, BinaryOp, Call, LVal, visitor::ExpVisitor};
+use ast::{Array, BinaryOp, Call, Var, visitor::ExpVisitor};
 
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
@@ -9,9 +9,13 @@ use crate::{
 };
 
 impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
+    fn get_right_value(&self, left_value: Value<'v>) -> Value<'v> {
+        left_value.into_value(&self.builder)
+    }
+
     fn visit_binary(&mut self, op: &BinaryOp, lhs: Value<'v>, rhs: Value<'v>) -> Value<'v> {
-        let Value::Int(lhs) = lhs else { unreachable!() };
-        let Value::Int(rhs) = rhs else { unreachable!() };
+        let lhs = lhs.as_int(&self.builder);
+        let rhs = rhs.as_int(&self.builder);
 
         let builder = &self.builder;
         let result = match op {
@@ -62,9 +66,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_unary(&mut self, op: &ast::UnaryOp, value: Value<'v>) -> Value<'v> {
-        let Value::Int(value) = value else {
-            unreachable!()
-        };
+        let value = value.as_int(&self.builder);
         Value::Int(match op {
             ast::UnaryOp::Neg => self.builder.build_int_neg(value, "").unwrap(),
             ast::UnaryOp::Pos => value,
@@ -73,13 +75,13 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_call(&mut self, call: &Call) -> Value<'v> {
-        let Value::Function(func, ret_ty) = self.visit_exp(&call.func) else {
+        let Value::Function(func, ret_ty) = self.visit_right_value(&call.func) else {
             unreachable!()
         };
         let args = call
             .args
             .iter()
-            .map(|arg| self.visit_exp(arg).into())
+            .map(|arg| self.visit_right_value(arg).into())
             .collect::<Vec<_>>();
         let result = self
             .builder
@@ -93,8 +95,11 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_array(&mut self, array: &Array) -> Value<'v> {
         match array {
             Array::List(values, _) => {
-                let values = values.iter().map(|e| self.visit_exp(e)).collect::<Vec<_>>();
-                let type_ = values[0].type_(&LLVM_CONTEXT);
+                let values = values
+                    .iter()
+                    .map(|e| self.visit_right_value(e))
+                    .collect::<Vec<_>>();
+                let type_ = values[0].type_();
 
                 let array = self
                     .builder
@@ -111,23 +116,11 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         }
     }
 
-    fn visit_lval(&mut self, lval: &LVal) -> Value<'v> {
-        let name = lval.path.path.join(".");
+    fn visit_var(&mut self, var: &Var) -> Value<'v> {
+        let name = var.path.path.join(".");
         if let Some(symbol) = self.symbols.lookup(&name) {
             match symbol {
-                Symbol::MutableVar(_, ptr) => {
-                    let Value::Pointer { value, ty } = ptr else {
-                        unreachable!()
-                    };
-                    let ty = ty.derefed();
-                    Value::new_from(
-                        self.builder
-                            .build_load(ty.clone(), value.clone(), "")
-                            .unwrap()
-                            .as_any_value_enum(),
-                        ty,
-                    )
-                }
+                Symbol::MutableVar(_, ptr) => ptr.clone(),
                 Symbol::ImmutableVar(_, value) => value.clone(),
             }
         } else {

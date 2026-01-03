@@ -13,30 +13,38 @@ pub trait CompUnitVisitor {
 }
 
 pub trait ExpVisitor<V> {
-    fn visit_exp(&mut self, exp: &Exp) -> V {
+    fn get_right_value(&self, left_value: V) -> V;
+
+    fn visit_left_value(&mut self, exp: &Exp) -> V {
         match exp {
             Exp::Array(array) => self.visit_array(array),
             Exp::Binary(op, lhs, rhs, _) => {
-                let lhs = self.visit_exp(lhs);
-                let rhs = self.visit_exp(rhs);
+                let lhs = self.visit_right_value(lhs);
+                let rhs = self.visit_right_value(rhs);
                 self.visit_binary(op, lhs, rhs)
             }
             Exp::Block(block) => self.visit_block(block),
             Exp::Call(call) => self.visit_call(call),
             Exp::Deref(deref) => self.visit_deref(deref),
-            Exp::Exp(exp, _) => self.visit_exp(exp),
-            Exp::GetAddr(get_addr) => self.visit_get_addr(get_addr),
+            Exp::Exp(exp, _) => self.visit_left_value(exp),
+            Exp::GetAddr(get_addr) => self.visit_left_value(&get_addr.exp),
             Exp::Index(index) => self.visit_index(index),
-            Exp::LVal(lval) => self.visit_lval(lval),
+            Exp::Var(var) => self.visit_var(var),
             Exp::Number(number) => self.visit_number(number),
             Exp::Str(string, _) => self.visit_str(string),
             Exp::Unary(op, value, _) => {
-                let value = self.visit_exp(value);
+                let value = self.visit_right_value(value);
                 self.visit_unary(op, value)
             }
             Exp::Function(func) => self.visit_function(func),
         }
     }
+
+    fn visit_right_value(&mut self, exp: &Exp) -> V {
+        let left_value = self.visit_left_value(exp);
+        self.get_right_value(left_value)
+    }
+
     fn visit_array(&mut self, array: &Array) -> V;
     fn visit_binary(&mut self, op: &BinaryOp, lhs: V, rhs: V) -> V;
     fn visit_unary(&mut self, op: &UnaryOp, value: V) -> V;
@@ -44,7 +52,7 @@ pub trait ExpVisitor<V> {
     fn visit_deref(&mut self, deref: &Deref) -> V;
     fn visit_get_addr(&mut self, get_addr: &GetAddr) -> V;
     fn visit_index(&mut self, index: &Index) -> V;
-    fn visit_lval(&mut self, lval: &LVal) -> V;
+    fn visit_var(&mut self, var: &Var) -> V;
     fn visit_number(&mut self, number: &Number) -> V;
     fn visit_str(&mut self, string: &str) -> V;
     fn visit_block(&mut self, block: &Block) -> V;
@@ -67,7 +75,10 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
                 return Some(return_value);
             }
         }
-        let result = block.return_value.as_ref().map(|e| self.visit_exp(e));
+        let result = block
+            .return_value
+            .as_ref()
+            .map(|e| self.visit_left_value(e));
         self.on_leave_block();
         result
     }
@@ -75,7 +86,7 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
     fn visit_statement(&mut self, stmt: &Statement) -> Option<V> {
         match stmt {
             Statement::Exp(exp) => {
-                self.visit_exp(exp);
+                self.visit_right_value(exp);
                 None
             }
             Statement::Return(r#return) => self.visit_return(r#return),

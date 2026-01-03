@@ -16,5 +16,5 @@ fn const_eval_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> Value {
         ..
     } = ctx.get_def(def_id).unwrap();
 
-    eval_ctx.visit_exp(exp)
+    eval_ctx.visit_right_value(exp)
 }

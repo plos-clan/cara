@@ -11,7 +11,7 @@ const main = extern C[main] fn() -> i32 {
         "ret",
     };
     
-    0
+    return return_code;
 };
 
 const test_void = fn() -> void {

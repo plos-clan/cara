@@ -30,7 +30,7 @@ impl Array {
 pub enum Exp {
     Exp(Box<Exp>, Span),
     Number(Number),
-    LVal(Box<LVal>),
+    Var(Box<Var>),
     Str(String, Span),
     Unary(UnaryOp, Box<Exp>, Span),
     Binary(BinaryOp, Box<Exp>, Box<Exp>, Span),
@@ -48,7 +48,7 @@ impl Exp {
         match self {
             Exp::Exp(_, span) => *span,
             Exp::Number(number) => number.span,
-            Exp::LVal(lval) => lval.span,
+            Exp::Var(var) => var.span,
             Exp::Unary(_, _, span) => *span,
             Exp::Binary(_, _, _, span) => *span,
             Exp::GetAddr(get_addr) => get_addr.span,
@@ -71,7 +71,7 @@ pub struct Call {
 }
 
 #[derive(Debug, Clone)]
-pub struct LVal {
+pub struct Var {
     pub path: Path,
     pub span: Span,
 }

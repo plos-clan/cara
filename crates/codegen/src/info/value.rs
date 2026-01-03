@@ -1,12 +1,12 @@
 use inkwell::{
-    context::Context,
+    builder::Builder,
     values::{
         AnyValue, AnyValueEnum, AsValueRef, BasicMetadataValueEnum, BasicValue, FunctionValue,
         IntValue, PointerValue,
     },
 };
 
-use crate::info::TypeKind;
+use crate::{LLVM_CONTEXT, info::TypeKind};
 
 #[derive(Debug, Clone)]
 pub enum Value<'v> {
@@ -16,16 +16,42 @@ pub enum Value<'v> {
         value: PointerValue<'v>,
         ty: TypeKind<'v>,
     },
+    Alloca {
+        value: PointerValue<'v>,
+        value_ty: TypeKind<'v>,
+    },
     Void,
 }
 
 impl<'v> Value<'v> {
-    pub fn type_(&self, ctx: &'v Context) -> TypeKind<'v> {
+    pub fn as_int(&self, builder: &Builder<'v>) -> IntValue<'v> {
+        let Value::Int(v) = self.into_value(builder) else {
+            unreachable!()
+        };
+        v
+    }
+
+    pub fn into_value(&self, builder: &Builder<'v>) -> Self {
+        match self {
+            Self::Alloca { value, value_ty } => {
+                let loaded = builder
+                    .build_load(value_ty.clone(), value.clone(), "")
+                    .unwrap();
+                Self::new_from(loaded.as_any_value_enum(), value_ty.clone())
+            }
+            _ => self.clone(),
+        }
+    }
+}
+
+impl<'v> Value<'v> {
+    pub fn type_(&self) -> TypeKind<'v> {
         match self {
             Value::Int(v) => TypeKind::Int(v.get_type()),
             Value::Function(f, _) => TypeKind::Function(f.get_type()),
             Value::Pointer { ty, .. } => ty.clone(),
-            Value::Void => TypeKind::Void(ctx.void_type()),
+            Value::Alloca { value_ty, .. } => value_ty.new_ptr(),
+            Value::Void => TypeKind::Void(LLVM_CONTEXT.void_type()),
         }
     }
 }
@@ -63,6 +89,7 @@ unsafe impl<'v> AsValueRef for Value<'v> {
             Value::Int(v) => v.as_value_ref(),
             Value::Function(v, _) => v.as_value_ref(),
             Value::Pointer { value, .. } => value.as_value_ref(),
+            Value::Alloca { value, .. } => value.as_value_ref(),
             Value::Void => unreachable!(),
         }
     }

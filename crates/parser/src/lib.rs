@@ -187,7 +187,7 @@ peg::parser! {
             }
             n: number() { n }
             s: string_wrapper() { s }
-            i: lval() { Exp::LVal(Box::new(i)) }
+            v: var() { Exp::Var(Box::new(v)) }
             g: get_addr() { Exp::GetAddr(Box::new(g)) }
             b: block() { Exp::Block(Box::new(b)) }
         }
@@ -213,9 +213,9 @@ peg::parser! {
             Exp::Str(string, Span::new(s, e))
         }
 
-        rule lval() -> LVal
+        rule var() -> Var
               = s: position!() p: path() e: position!() {
-            LVal { path: p, span: Span::new(s, e) }
+            Var { path: p, span: Span::new(s, e) }
         }
 
         rule number() -> Exp

@@ -1,13 +1,17 @@
 use std::sync::Arc;
 
 use ast::{
-    Array, BinaryOp, Block, Call, Deref, FunctionDef, GetAddr, Index, LVal, Number, UnaryOp,
+    Array, BinaryOp, Block, Call, Deref, FunctionDef, GetAddr, Index, Number, UnaryOp, Var,
     visitor::ExpVisitor,
 };
 
 use crate::{ConstEvalContext, info::Value, queries::CONST_EVAL_PROVIDER};
 
 impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
+    fn get_right_value(&self, left_value: Value) -> Value {
+        left_value
+    }
+
     fn visit_array(&mut self, _array: &Array) -> Value {
         unimplemented!()
     }
@@ -58,8 +62,8 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
         unimplemented!()
     }
 
-    fn visit_lval(&mut self, lval: &LVal) -> Value {
-        let name = lval.path.path.join(".");
+    fn visit_var(&mut self, var: &Var) -> Value {
+        let name = var.path.path.join(".");
         let def_id = self.ctx.lookup_def_id(name).unwrap();
         self.ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap()
     }
