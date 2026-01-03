@@ -26,15 +26,8 @@ pub enum BlockItem {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Return(Return),
     Exp(Exp),
     InlineAsm(InlineAsm),
-}
-
-#[derive(Debug, Clone)]
-pub struct Return {
-    pub value: Option<Exp>,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

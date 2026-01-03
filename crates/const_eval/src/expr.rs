@@ -87,7 +87,15 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
         }
     }
 
+    fn visit_assign(&mut self, _assign: &ast::Assign) -> Value {
+        Value::Unit
+    }
+
     fn visit_unit(&mut self) -> Value {
         Value::Unit
+    }
+
+    fn visit_return(&mut self, _return_stmt: &ast::Return) -> Value {
+        unimplemented!()
     }
 }

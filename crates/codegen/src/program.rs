@@ -1,7 +1,4 @@
-use ast::{
-    Return,
-    visitor::{BlockVisitor, ExpVisitor},
-};
+use ast::visitor::{BlockVisitor, ExpVisitor};
 
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
@@ -15,23 +12,6 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn on_leave_block(&mut self) {
         self.symbols.pop_scope();
-    }
-
-    fn visit_return(&mut self, ret: &Return) -> Option<Value<'v>> {
-        if let Some(value) = ret.value.as_ref() {
-            let value = self.visit_right_value(value);
-            self.builder
-                .build_return(if matches!(value, Value::Unit) {
-                    None
-                } else {
-                    Some(&value)
-                })
-                .unwrap();
-        } else {
-            self.builder.build_return(None).unwrap();
-        }
-
-        None
     }
 
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {

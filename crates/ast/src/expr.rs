@@ -41,6 +41,8 @@ pub enum Exp {
     Call(Box<Call>),
     Block(Box<Block>),
     Function(Box<FunctionDef>),
+    Assign(Box<Assign>),
+    Return(Box<Return>),
     Unit(Span),
 }
 
@@ -60,6 +62,8 @@ impl Exp {
             Exp::Call(call) => call.span,
             Exp::Block(block) => block.span,
             Exp::Function(func) => func.span,
+            Exp::Assign(assign) => assign.span,
+            Exp::Return(return_) => return_.span,
             Exp::Unit(span) => *span,
         }
     }
@@ -106,6 +110,19 @@ pub struct Number {
 #[derive(Debug, Clone)]
 pub struct Path {
     pub path: Vec<String>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Assign {
+    pub lhs: Exp,
+    pub rhs: Exp,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Return {
+    pub value: Option<Exp>,
     pub span: Span,
 }
 

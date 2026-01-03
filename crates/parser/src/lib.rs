@@ -24,7 +24,7 @@ peg::parser! {
         }
 
         rule abi() -> Abi
-        = "extern" _ abi: $("C" / "c") _ "[" name: identifier() _ "]" {
+        = "extern" __ abi: $("C" / "c") _ "[" _ name: identifier() _ "]" {
             match abi {
                 "C" | "c" => Abi::CAbi(name),
                 _ => unreachable!(),
@@ -37,7 +37,7 @@ peg::parser! {
         }
 
         rule const_def() -> ConstDef
-        = l: position!() _ "const" _ name: identifier() _ "=" _ value: const_initial_value() _ ";" r: position!() {
+        = l: position!() _ "const" __ name: identifier() _ "=" _ value: const_initial_value() _ ";" r: position!() {
             ConstDef { name, initial_value: value, span: Span::new(l, r) }
         }
 
@@ -59,7 +59,7 @@ peg::parser! {
         }
 
         rule var_def() -> VarDef
-        = l: position!() _ "let" _ mutable: ("mut"?) _ name: identifier() _
+        = l: position!() _ "let" __ mutable: ("mut"?) _ name: identifier() _
                 var_type: (":" _ t: type_() {t} )? _
                 "=" _ value: expr() _ ";" r: position!() {
             VarDef { name, var_type, initial_value: value, mutable: mutable.is_some(), span: Span::new(l, r) }
@@ -71,17 +71,10 @@ peg::parser! {
         }
 
         rule statement_impl() -> Statement
-        = r: return_stmt() {
-            Statement::Return(r)
-        } / i: inline_asm() {
+        = i: inline_asm() {
             Statement::InlineAsm(i)
         } / e: expr() {
             Statement::Exp(e)
-        }
-
-        rule return_stmt() -> Return
-        = l: position!() _ "return" _ value: expr()? _ r: position!() {
-            Return { value, span: Span::new(l, r) }
         }
 
         rule inline_asm() -> InlineAsm
@@ -99,6 +92,19 @@ peg::parser! {
             e: expr_impl() { e }
 
         rule expr_impl() -> Exp = precedence!{
+            lhs: (@) _ "=" _ rhs: @ {
+                let span = Span::new(lhs.span().start(), rhs.span().end());
+                Exp::Assign(Box::new(Assign { lhs, rhs, span }))
+            }
+            l: position!() _ "return" __ rhs: @ {
+                let span = Span::new(l, rhs.span().end());
+                Exp::Return(Box::new(Return { value: Some(rhs), span }))
+            }
+            l: position!() _ "return" __ ";" {
+                let span = Span::new(l, l);
+                Exp::Return(Box::new(Return { value: None, span }))
+            }
+            --
             l: (@) _ "<" _ r: @ {
                 binary_op_rule!(l, r, Lt)
             }
@@ -279,7 +285,8 @@ peg::parser! {
             }
             / expected!("valid escape sequence")
 
-        rule whitespace() = quiet!{[' ' | '\n' | '\t']*}
-        rule _() = whitespace()
+        rule whitespace() = quiet!{[' ' | '\n' | '\t']}
+        rule _() = whitespace()*
+        rule __() = whitespace()+
     }
 }

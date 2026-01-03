@@ -37,6 +37,8 @@ pub trait ExpVisitor<V> {
                 self.visit_unary(op, value)
             }
             Exp::Function(func) => self.visit_function(func),
+            Exp::Assign(assign) => self.visit_assign(assign),
+            Exp::Return(return_) => self.visit_return(return_),
             Exp::Unit(_) => self.visit_unit(),
         }
     }
@@ -59,6 +61,9 @@ pub trait ExpVisitor<V> {
     fn visit_block(&mut self, block: &Block) -> V;
     fn visit_function(&mut self, func: &FunctionDef) -> V;
     fn visit_unit(&mut self) -> V;
+    fn visit_assign(&mut self, assign: &Assign) -> V;
+    /// If this returns `Some`, the function returns the value.
+    fn visit_return(&mut self, return_stmt: &Return) -> V;
 }
 
 pub trait BlockVisitor<V>: ExpVisitor<V> {
@@ -91,15 +96,12 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
                 self.visit_right_value(exp);
                 None
             }
-            Statement::Return(r#return) => self.visit_return(r#return),
             Statement::InlineAsm(inline_asm) => {
                 self.visit_inline_asm(inline_asm);
                 None
             }
         }
     }
-    /// If this returns `Some`, the function returns the value.
-    fn visit_return(&mut self, return_stmt: &Return) -> Option<V>;
     fn visit_var_def(&mut self, var_def: &VarDef);
     fn visit_inline_asm(&mut self, inline_asm: &InlineAsm);
 }

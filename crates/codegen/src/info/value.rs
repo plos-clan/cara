@@ -31,6 +31,14 @@ impl<'v> Value<'v> {
         v
     }
 
+    pub fn get_pointer(&self) -> PointerValue<'v> {
+        match self {
+            Value::Pointer { value, .. } => value.clone(),
+            Value::Alloca { value, .. } => value.clone(),
+            _ => unreachable!(),
+        }
+    }
+
     pub fn into_value(&self, builder: &Builder<'v>) -> Self {
         match self {
             Self::Alloca { value, value_ty } => {

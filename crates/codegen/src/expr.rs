@@ -4,7 +4,7 @@ use inkwell::{
     values::{AnyValue, BasicValue, InstructionOpcode},
 };
 
-use ast::{Array, BinaryOp, Call, Var, visitor::ExpVisitor};
+use ast::{Array, Assign, BinaryOp, Call, Var, visitor::ExpVisitor};
 
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
@@ -139,6 +139,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                 Symbol::ImmutableVar(_, value) => value.clone(),
             }
         } else {
+            println!("Look up {}", name);
             let def_id = self.queries.lookup_def_id(&name).unwrap();
             let CodegenResult { module, mut value } = self
                 .queries
@@ -171,6 +172,33 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_unit(&mut self) -> Value<'v> {
+        Value::Unit
+    }
+
+    fn visit_assign(&mut self, assign: &Assign) -> Value<'v> {
+        let lhs = self.visit_left_value(&assign.lhs);
+        let rhs = self.visit_right_value(&assign.rhs);
+
+        let ptr = lhs.get_pointer();
+        self.builder.build_store(ptr, rhs).unwrap();
+
+        Value::Unit
+    }
+
+    fn visit_return(&mut self, ret: &ast::Return) -> Value<'v> {
+        if let Some(value) = ret.value.as_ref() {
+            let value = self.visit_right_value(value);
+            self.builder
+                .build_return(if matches!(value, Value::Unit) {
+                    None
+                } else {
+                    Some(&value)
+                })
+                .unwrap();
+        } else {
+            self.builder.build_return(None).unwrap();
+        }
+
         Value::Unit
     }
 }
