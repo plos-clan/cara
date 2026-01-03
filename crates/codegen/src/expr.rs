@@ -1,4 +1,8 @@
-use inkwell::{types::BasicTypeEnum, values::AnyValue};
+use inkwell::{
+    IntPredicate,
+    types::BasicTypeEnum,
+    values::{AnyValue, BasicValue, InstructionOpcode},
+};
 
 use ast::{Array, BinaryOp, Call, Var, visitor::ExpVisitor};
 
@@ -13,31 +17,42 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         left_value.into_value(&self.builder)
     }
 
-    fn visit_binary(&mut self, op: &BinaryOp, lhs: Value<'v>, rhs: Value<'v>) -> Value<'v> {
-        let lhs = lhs.as_int(&self.builder);
-        let rhs = rhs.as_int(&self.builder);
+    fn visit_binary(&mut self, op: &BinaryOp, lhs_: Value<'v>, rhs_: Value<'v>) -> Value<'v> {
+        let lhs = lhs_.as_basic_value_enum();
+        let rhs = rhs_.as_basic_value_enum();
 
         let builder = &self.builder;
-        let result = match op {
-            BinaryOp::Add => builder.build_int_add(lhs, rhs, ""),
-            BinaryOp::Sub => builder.build_int_sub(lhs, rhs, ""),
-            BinaryOp::Mul => builder.build_int_mul(lhs, rhs, ""),
-            BinaryOp::Div => builder.build_int_unsigned_div(lhs, rhs, ""),
-            BinaryOp::Mod => builder.build_int_unsigned_rem(lhs, rhs, ""),
-            BinaryOp::Lt => builder.build_int_compare(inkwell::IntPredicate::ULT, lhs, rhs, ""),
-            BinaryOp::Le => builder.build_int_compare(inkwell::IntPredicate::ULE, lhs, rhs, ""),
-            BinaryOp::Gt => builder.build_int_compare(inkwell::IntPredicate::UGT, lhs, rhs, ""),
-            BinaryOp::Ge => builder.build_int_compare(inkwell::IntPredicate::UGE, lhs, rhs, ""),
-            BinaryOp::Eq => builder.build_int_compare(inkwell::IntPredicate::EQ, lhs, rhs, ""),
-            BinaryOp::Ne => builder.build_int_compare(inkwell::IntPredicate::NE, lhs, rhs, ""),
-            BinaryOp::And => builder.build_and(lhs, rhs, ""),
-            BinaryOp::Or => builder.build_or(lhs, rhs, ""),
-            BinaryOp::LShift => builder.build_left_shift(lhs, rhs, ""),
-            BinaryOp::RShift => builder.build_right_shift(lhs, rhs, false, ""),
-        }
-        .unwrap();
+        let op_code = match op {
+            BinaryOp::Add => InstructionOpcode::Add,
+            BinaryOp::Sub => InstructionOpcode::Sub,
+            BinaryOp::Mul => InstructionOpcode::Mul,
+            BinaryOp::Div => InstructionOpcode::UDiv,
+            BinaryOp::Mod => InstructionOpcode::URem,
+            BinaryOp::And => InstructionOpcode::And,
+            BinaryOp::Or => InstructionOpcode::Or,
+            BinaryOp::LShift => InstructionOpcode::Shl,
+            BinaryOp::RShift => InstructionOpcode::LShr,
+            _ => {
+                let cmp = match op {
+                    BinaryOp::Lt => IntPredicate::SLT,
+                    BinaryOp::Le => IntPredicate::SLE,
+                    BinaryOp::Gt => IntPredicate::SGT,
+                    BinaryOp::Ge => IntPredicate::SGE,
+                    BinaryOp::Eq => IntPredicate::EQ,
+                    BinaryOp::Ne => IntPredicate::NE,
+                    _ => unreachable!(),
+                };
+                return Value::Int(
+                    builder
+                        .build_int_compare(cmp, lhs.into_int_value(), rhs.into_int_value(), "")
+                        .unwrap(),
+                );
+            }
+        };
 
-        Value::Int(result)
+        let result = builder.build_binop(op_code, lhs, rhs, "").unwrap();
+
+        Value::new_from(result.as_any_value_enum(), lhs_.type_())
     }
 
     fn visit_block(&mut self, block: &ast::Block) -> Value<'v> {
