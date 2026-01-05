@@ -1,8 +1,12 @@
 const fib_num = 10i64;
 
 const main = extern C[main] fn() -> i64 {
+    let mut a = "abcd";
+    let mut b: [i64; 3] = test();
+    let mut b_0 = 0i64;
     test();
-    fib(fib_num)
+    b[0] = fib(fib_num);
+    b[0]
 };
 
 const fib = fn(n: i64) -> i64 {
@@ -13,5 +17,6 @@ const fib = fn(n: i64) -> i64 {
     }
 };
 
-const test = fn() {
+const test = fn() -> [i64; 3] {
+    [1i64, 2i64, 3i64]
 };

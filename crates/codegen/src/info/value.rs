@@ -1,8 +1,8 @@
 use inkwell::{
     builder::Builder,
     values::{
-        AnyValue, AnyValueEnum, AsValueRef, BasicMetadataValueEnum, BasicValue, FunctionValue,
-        IntValue, PointerValue,
+        AnyValue, AnyValueEnum, ArrayValue, AsValueRef, BasicMetadataValueEnum, BasicValue,
+        FunctionValue, IntValue, PointerValue,
     },
 };
 
@@ -14,6 +14,10 @@ pub enum Value<'v> {
     Function(FunctionValue<'v>, TypeKind<'v>),
     Pointer {
         value: PointerValue<'v>,
+        ty: TypeKind<'v>,
+    },
+    Array {
+        value: ArrayValue<'v>,
         ty: TypeKind<'v>,
     },
     Alloca {
@@ -65,6 +69,7 @@ impl<'v> Value<'v> {
             Value::Pointer { ty, .. } => ty.clone(),
             Value::Alloca { value_ty, .. } => value_ty.new_ptr(),
             Value::Unit => TypeKind::new_unit(),
+            Value::Array { ty, .. } => ty.clone(),
         }
     }
 }
@@ -81,6 +86,10 @@ impl<'v> Value<'v> {
                 ty: ty.clone(),
             },
             AnyValueEnum::FunctionValue(v) => Value::Function(v, ty.clone()),
+            AnyValueEnum::ArrayValue(v) => Value::Array {
+                value: v,
+                ty: ty.clone(),
+            },
             _ => panic!("unexpected: {}", value),
         }
     }
@@ -89,8 +98,9 @@ impl<'v> Value<'v> {
 impl<'v> From<Value<'v>> for BasicMetadataValueEnum<'v> {
     fn from(value: Value<'v>) -> Self {
         match value {
-            Value::Int(v) => BasicMetadataValueEnum::IntValue(v),
-            Value::Pointer { value, .. } => BasicMetadataValueEnum::PointerValue(value),
+            Value::Int(v) => v.into(),
+            Value::Pointer { value, .. } => value.into(),
+            Value::Array { value, .. } => value.into(),
             _ => unreachable!(),
         }
     }
@@ -104,6 +114,7 @@ unsafe impl<'v> AsValueRef for Value<'v> {
             Value::Pointer { value, .. } => value.as_value_ref(),
             Value::Alloca { value, .. } => value.as_value_ref(),
             Value::Unit => unreachable!(),
+            Value::Array { value, .. } => value.as_value_ref(),
         }
     }
 }

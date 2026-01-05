@@ -100,6 +100,10 @@ peg::parser! {
                 let span = Span::new(l, l);
                 Exp::Return(Box::new(Return { value: None, span }))
             }
+            lhs: (@) _ "=" _ rhs: @ {
+                let span = Span::new(lhs.span().start(), rhs.span().end());
+                Exp::Assign(Box::new(Assign { lhs, rhs, span }))
+            }
             --
             l: (@) _ "<" _ r: @ {
                 binary_op_rule!(l, r, Lt)
@@ -185,10 +189,6 @@ peg::parser! {
             }
             --
             i: if_exp() { Exp::IfExp(Box::new(i)) }
-            lhs: (@) _ "=" _ rhs: @ {
-                let span = Span::new(lhs.span().start(), rhs.span().end());
-                Exp::Assign(Box::new(Assign { lhs, rhs, span }))
-            }
             l: position!() "(" _ ")" r: position!() {
                 let span = Span::new(l, r);
                 Exp::Unit(span)
@@ -201,7 +201,13 @@ peg::parser! {
             v: var() { Exp::Var(Box::new(v)) }
             g: get_addr() { Exp::GetAddr(Box::new(g)) }
             b: block() { Exp::Block(Box::new(b)) }
+            a: array() { Exp::Array(Box::new(a)) }
         }
+
+        rule array() -> Array
+            = l: position!() "[" _ values: (expr() ** ("," _)) _ "]" r: position!() {
+                Array::List(values, Span::new(l, r))
+            }
 
         rule if_exp() -> IfExp
              = l: position!() "if" __ c: expr() _ t: block() _
@@ -285,6 +291,8 @@ peg::parser! {
                 TypeEnum::Unsigned(width)
             } / "(" _ ")" {
                 TypeEnum::Unit
+            } / "[" _ inner: type_() _ ";" _ len: width() _ "]" {
+                TypeEnum::Array(Box::new(inner), len)
             }
 
         rule type_() -> Type

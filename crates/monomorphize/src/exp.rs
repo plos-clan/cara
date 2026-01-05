@@ -1,12 +1,19 @@
-use ast::visitor::ExpVisitor;
+use ast::{Array, visitor::ExpVisitor};
 
 use crate::MonomorphizeContext;
 
 impl ExpVisitor<()> for MonomorphizeContext<'_> {
     fn get_right_value(&self, _left_value: ()) {}
 
-    fn visit_array(&mut self, _array: &ast::Array) {
-        unimplemented!()
+    fn visit_array(&mut self, array: &Array) {
+        match array {
+            Array::List(elements, _) => {
+                for element in elements {
+                    self.visit_right_value(element);
+                }
+            }
+            _ => unimplemented!()
+        }
     }
 
     fn visit_assign(&mut self, assign: &ast::Assign) {

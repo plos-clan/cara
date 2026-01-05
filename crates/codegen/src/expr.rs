@@ -1,7 +1,6 @@
 use const_eval::queries::CONST_EVAL_PROVIDER;
 use inkwell::{
     IntPredicate,
-    types::BasicTypeEnum,
     values::{AnyValue, BasicValue, InstructionOpcode},
 };
 
@@ -9,11 +8,12 @@ use ast::{Array, Assign, BinaryOp, Call, Var, visitor::ExpVisitor};
 
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
-    info::{Symbol, Value},
+    info::{Symbol, TypeKind, Value},
 };
 
 impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn get_right_value(&self, left_value: Value<'v>) -> Value<'v> {
+        println!("{:?}", left_value);
         left_value.as_right_value(&self.builder)
     }
 
@@ -68,8 +68,19 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         unimplemented!()
     }
 
-    fn visit_index(&mut self, _index: &ast::Index) -> Value<'v> {
-        unimplemented!()
+    fn visit_index(&mut self, index_node: &ast::Index) -> Value<'v> {
+        let ptr_value = self.visit_left_value(&index_node.exp);
+        let index = self.visit_right_value(&index_node.index);
+
+        let pointee_ty = ptr_value.type_().derefed().derefed();
+        let ptr = ptr_value.as_basic_value_enum().into_pointer_value();
+
+        let ptr = unsafe {
+            self.builder
+                .build_gep(pointee_ty.clone(), ptr, &[index.as_int(&self.builder)], "")
+                .unwrap()
+        };
+        Value::Alloca { value: ptr, value_ty: pointee_ty }
     }
 
     fn visit_number(&mut self, number: &ast::Number) -> Value<'v> {
@@ -81,8 +92,12 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         Value::Int(ty.const_int(number.num, true))
     }
 
-    fn visit_str(&mut self, _string: &str) -> Value<'v> {
-        unimplemented!()
+    fn visit_str(&mut self, string: &str) -> Value<'v> {
+        let string = LLVM_CONTEXT.const_string(string.as_bytes(), true);
+        Value::Array {
+            value: string,
+            ty: TypeKind::new_int(8).new_array(string.get_type().len()),
+        }
     }
 
     fn visit_unary(&mut self, op: &ast::UnaryOp, value: Value<'v>) -> Value<'v> {
@@ -119,16 +134,9 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                     .iter()
                     .map(|e| self.visit_right_value(e))
                     .collect::<Vec<_>>();
-                let type_ = values[0].type_();
+                let ty = values[0].type_();
 
-                let array = self
-                    .builder
-                    .build_alloca(BasicTypeEnum::from(type_.clone()), "")
-                    .unwrap();
-                Value::Pointer {
-                    value: array,
-                    ty: type_.new_ptr(),
-                }
+                ty.const_array(&values)
             }
             Array::Template(_, _, _) => {
                 unimplemented!()

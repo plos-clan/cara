@@ -87,7 +87,7 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
         let result = block
             .return_value
             .as_ref()
-            .map(|e| self.visit_left_value(e));
+            .map(|e| self.visit_right_value(e));
         self.on_leave_block();
         result
     }

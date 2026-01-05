@@ -78,6 +78,8 @@ pub fn codegen(ctx: Arc<QueryContext<'_>>) {
         codegen_item(ctx.clone(), def_id, global_funcs.clone(), module.clone());
     }
 
+    module.print_to_stderr();
+
     let passes: &[&str] = &[
         "instcombine",
         "reassociate",
@@ -232,8 +234,10 @@ impl<'v> VisitorCtx<'v> {
             }
         }
 
+        let alloca_ty = ty.clone();
+
         Value::Alloca {
-            value: builder.build_alloca(ty.clone(), name).unwrap(),
+            value: builder.build_alloca(alloca_ty, name).unwrap(),
             value_ty: ty,
         }
     }
