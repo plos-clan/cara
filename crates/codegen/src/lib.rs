@@ -51,6 +51,8 @@ pub fn init() {
     Target::initialize_all(&InitializationConfig::default());
 }
 
+type FunctionMap = BTreeMap<DefId, Value<'static>>;
+
 pub fn codegen(ctx: Arc<QueryContext<'_>>) {
     let target_triple = TargetMachine::get_default_triple();
     let target = Target::from_triple(&target_triple).unwrap();
@@ -65,95 +67,15 @@ pub fn codegen(ctx: Arc<QueryContext<'_>>) {
         )
         .unwrap();
 
-    let mut global_funcs = BTreeMap::new();
-    let module = LLVM_CONTEXT.create_module("main");
-
     let codegen_units = ctx.query(&COLLECT_CODEGEN_UNITS, ()).unwrap();
-    for unit in codegen_units.iter() {
-        let const_eval::Value::Function(func) = ctx.query(&CONST_EVAL_PROVIDER, *unit).unwrap()
-        else {
-            panic!("Expected function value");
-        };
-        let FunctionDef {
-            abi,
-            params,
-            return_type,
-            ..
-        } = func.as_ref();
 
-        let function_name = match abi {
-            ast::Abi::CAbi(name) => name.clone(),
-            _ => Uuid::new_v4().to_string(),
-        };
-
-        let mut param_types = Vec::new();
-        for param in params {
-            param_types.push(get_llvm_type(&LLVM_CONTEXT, &param.param_type));
-        }
-
-        let return_type = get_llvm_type(&LLVM_CONTEXT, return_type);
-        let function_type = return_type.function(param_types);
-        let function = module.add_function(&function_name, function_type.as_function_type(), None);
-        function.set_call_conventions(0); // C
-
-        global_funcs.insert(*unit, Value::Function(function, return_type));
-    }
+    let (module, global_funcs) = generate_defs(ctx.clone(), &codegen_units);
 
     let global_funcs = Arc::new(global_funcs);
     let module = Arc::new(module);
 
     for def_id in codegen_units {
-        let const_eval::Value::Function(func) = ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap()
-        else {
-            panic!("Expected function value");
-        };
-        let FunctionDef { params, block, .. } = func.as_ref();
-
-        let func_value = global_funcs.get(&def_id).cloned().unwrap();
-        let function = func_value.as_fn();
-        let entry_block = LLVM_CONTEXT.append_basic_block(function, "entry");
-
-        let builder = LLVM_CONTEXT.create_builder();
-        builder.position_at_end(entry_block);
-
-        let mut ctx = VisitorCtx {
-            builder,
-            symbols: SymbolStack::new(),
-            module: module.clone(),
-            queries: ctx.clone(),
-            current_fn: func_value,
-            global_funcs: global_funcs.clone(),
-        };
-
-        for (id, param) in params.iter().enumerate() {
-            let ty = get_llvm_type(&LLVM_CONTEXT, &param.param_type);
-
-            ctx.symbols.pre_push(Symbol::ImmutableVar(
-                param.name.clone(),
-                Value::new_from(
-                    function
-                        .get_nth_param(id as u32)
-                        .unwrap()
-                        .as_any_value_enum(),
-                    ty,
-                ),
-            ));
-        }
-
-        if let Some(value) = ctx.visit_block(block)
-            && !matches!(value, Value::Unit)
-        {
-            ctx.builder.build_return(Some(&value)).unwrap();
-        }
-        if ctx
-            .builder
-            .get_insert_block()
-            .unwrap()
-            .get_terminator()
-            .is_none()
-        {
-            ctx.builder.build_return(None).unwrap();
-        }
+        codegen_item(ctx.clone(), def_id, global_funcs.clone(), module.clone());
     }
 
     let passes: &[&str] = &[
@@ -182,6 +104,107 @@ pub fn codegen(ctx: Arc<QueryContext<'_>>) {
     target_machine
         .write_to_file(&module, FileType::Assembly, Path::new("test.asm"))
         .unwrap();
+}
+
+fn generate_defs(
+    ctx: Arc<QueryContext<'_>>,
+    codegen_units: &Vec<DefId>,
+) -> (Module<'static>, FunctionMap) {
+    let mut global_funcs = BTreeMap::new();
+    let module = LLVM_CONTEXT.create_module("main");
+
+    for unit in codegen_units.iter() {
+        let const_eval::Value::Function(func) = ctx.query(&CONST_EVAL_PROVIDER, *unit).unwrap()
+        else {
+            panic!("Expected function value");
+        };
+        let FunctionDef {
+            abi,
+            params,
+            return_type,
+            ..
+        } = func.as_ref();
+
+        let function_name = match abi {
+            ast::Abi::CAbi(name) => name.clone(),
+            _ => Uuid::new_v4().to_string(),
+        };
+
+        let mut param_types = Vec::new();
+        for param in params {
+            param_types.push(get_llvm_type(&param.param_type));
+        }
+
+        let return_type = return_type
+            .as_ref()
+            .map(|return_type| get_llvm_type(return_type))
+            .unwrap_or(TypeKind::new_unit());
+        let function_type = return_type.function(param_types);
+        let function = module.add_function(&function_name, function_type.as_function_type(), None);
+        function.set_call_conventions(0); // C
+
+        global_funcs.insert(*unit, Value::Function(function, return_type));
+    }
+
+    (module, global_funcs)
+}
+
+fn codegen_item(
+    ctx: Arc<QueryContext<'_>>,
+    def_id: DefId,
+    global_funcs: Arc<FunctionMap>,
+    module: Arc<Module<'static>>,
+) {
+    let const_eval::Value::Function(func) = ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap() else {
+        panic!("Expected function value");
+    };
+    let FunctionDef { params, block, .. } = func.as_ref();
+
+    let func_value = global_funcs.get(&def_id).cloned().unwrap();
+    let function = func_value.as_fn();
+    let entry_block = LLVM_CONTEXT.append_basic_block(function, "entry");
+
+    let builder = LLVM_CONTEXT.create_builder();
+    builder.position_at_end(entry_block);
+
+    let mut ctx = VisitorCtx {
+        builder,
+        symbols: SymbolStack::new(),
+        module,
+        queries: ctx.clone(),
+        current_fn: func_value,
+        global_funcs,
+    };
+
+    for (id, param) in params.iter().enumerate() {
+        let ty = get_llvm_type(&param.param_type);
+
+        ctx.symbols.pre_push(Symbol::ImmutableVar(
+            param.name.clone(),
+            Value::new_from(
+                function
+                    .get_nth_param(id as u32)
+                    .unwrap()
+                    .as_any_value_enum(),
+                ty,
+            ),
+        ));
+    }
+
+    if let Some(value) = ctx.visit_block(block)
+        && !matches!(value, Value::Unit)
+    {
+        ctx.builder.build_return(Some(&value)).unwrap();
+    }
+    if ctx
+        .builder
+        .get_insert_block()
+        .unwrap()
+        .get_terminator()
+        .is_none()
+    {
+        ctx.builder.build_return(None).unwrap();
+    }
 }
 
 struct VisitorCtx<'v> {

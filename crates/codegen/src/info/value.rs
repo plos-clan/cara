@@ -49,9 +49,7 @@ impl<'v> Value<'v> {
     pub fn as_right_value(&self, builder: &Builder<'v>) -> Self {
         match self {
             Self::Alloca { value, value_ty } => {
-                let loaded = builder
-                    .build_load(value_ty.clone(), *value, "")
-                    .unwrap();
+                let loaded = builder.build_load(value_ty.clone(), *value, "").unwrap();
                 Self::new_from(loaded.as_any_value_enum(), value_ty.clone())
             }
             _ => self.clone(),

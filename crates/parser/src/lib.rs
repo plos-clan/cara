@@ -32,7 +32,7 @@ peg::parser! {
         }
 
         rule function_def() -> FunctionDef
-        = l: position!() _ abi: abi()? _ "fn" _ "(" _ params: (param() ** ",") _ ")" _ "->" _ return_type: type_() _ block: block() _ r: position!() {
+        = l: position!() _ abi: abi()? _ "fn" _ "(" _ params: (param() ** ",") _ ")" return_type: (__ "->" _ t: type_() {t})? _ block: block() _ r: position!() {
             FunctionDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, block, span: Span::new(l, r) }
         }
 

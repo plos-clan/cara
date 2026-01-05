@@ -150,9 +150,11 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
             match value {
                 const_eval::Value::Function(_) => self.global_funcs.get(&def_id).unwrap().clone(),
-                const_eval::Value::Int(i) => {
-                    Value::Int(LLVM_CONTEXT.i32_type().const_int(i as u64, true))
-                }
+                const_eval::Value::Int((signed, width), i) => Value::Int(
+                    LLVM_CONTEXT
+                        .custom_width_int_type(width)
+                        .const_int(i as u64, signed),
+                ),
                 const_eval::Value::Unit => Value::Unit,
             }
         }

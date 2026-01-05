@@ -17,25 +17,26 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_binary(&mut self, op: &BinaryOp, lhs: Value, rhs: Value) -> Value {
-        let Value::Int(lhs) = lhs else { unreachable!() };
-        let Value::Int(rhs) = rhs else { unreachable!() };
-        match op {
-            BinaryOp::Add => Value::Int(lhs + rhs),
-            BinaryOp::Sub => Value::Int(lhs - rhs),
-            BinaryOp::Mul => Value::Int(lhs * rhs),
-            BinaryOp::Div => Value::Int(lhs / rhs),
-            BinaryOp::Mod => Value::Int(lhs % rhs),
-            BinaryOp::And => Value::Int(lhs & rhs),
-            BinaryOp::Or => Value::Int(lhs | rhs),
-            BinaryOp::LShift => Value::Int(lhs << rhs),
-            BinaryOp::RShift => Value::Int(lhs >> rhs),
-            BinaryOp::Le => Value::Int((lhs <= rhs) as i64),
-            BinaryOp::Lt => Value::Int((lhs < rhs) as i64),
-            BinaryOp::Ge => Value::Int((lhs >= rhs) as i64),
-            BinaryOp::Gt => Value::Int((lhs > rhs) as i64),
-            BinaryOp::Eq => Value::Int((lhs == rhs) as i64),
-            BinaryOp::Ne => Value::Int((lhs != rhs) as i64),
-        }
+        let Value::Int(_, rhs) = rhs else {
+            unreachable!()
+        };
+        lhs.apply(|lhs| match op {
+            BinaryOp::Add => lhs + rhs,
+            BinaryOp::Sub => lhs - rhs,
+            BinaryOp::Mul => lhs * rhs,
+            BinaryOp::Div => lhs / rhs,
+            BinaryOp::Mod => lhs % rhs,
+            BinaryOp::And => lhs & rhs,
+            BinaryOp::Or => lhs | rhs,
+            BinaryOp::LShift => lhs << rhs,
+            BinaryOp::RShift => lhs >> rhs,
+            BinaryOp::Le => (lhs <= rhs) as i64,
+            BinaryOp::Lt => (lhs < rhs) as i64,
+            BinaryOp::Ge => (lhs >= rhs) as i64,
+            BinaryOp::Gt => (lhs > rhs) as i64,
+            BinaryOp::Eq => (lhs == rhs) as i64,
+            BinaryOp::Ne => (lhs != rhs) as i64,
+        })
     }
 
     fn visit_block(&mut self, _block: &Block) -> Value {
@@ -69,7 +70,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_number(&mut self, number: &Number) -> Value {
-        Value::Int(number.num as i64)
+        Value::Int(number.ty.unwrap(), number.num as i64)
     }
 
     fn visit_str(&mut self, _string: &str) -> Value {
@@ -77,14 +78,11 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_unary(&mut self, op: &UnaryOp, value: Value) -> Value {
-        let Value::Int(value) = value else {
-            unreachable!()
-        };
-        match op {
-            UnaryOp::Neg => Value::Int(-value),
-            UnaryOp::Not => Value::Int(!value),
-            UnaryOp::Pos => Value::Int(value),
-        }
+        value.apply(|value| match op {
+            UnaryOp::Neg => -value,
+            UnaryOp::Not => !value,
+            UnaryOp::Pos => value,
+        })
     }
 
     fn visit_assign(&mut self, _assign: &ast::Assign) -> Value {

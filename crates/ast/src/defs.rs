@@ -31,7 +31,7 @@ pub enum Abi {
 pub struct FunctionDef {
     pub abi: Abi,
     pub params: Vec<Param>,
-    pub return_type: Type,
+    pub return_type: Option<Type>,
     pub block: Block,
     pub span: Span,
 }

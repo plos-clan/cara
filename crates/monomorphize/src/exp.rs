@@ -3,8 +3,7 @@ use ast::visitor::ExpVisitor;
 use crate::MonomorphizeContext;
 
 impl ExpVisitor<()> for MonomorphizeContext<'_> {
-    fn get_right_value(&self, _left_value: ()) {
-    }
+    fn get_right_value(&self, _left_value: ()) {}
 
     fn visit_array(&mut self, _array: &ast::Array) {
         unimplemented!()
