@@ -13,7 +13,6 @@ use crate::{
 
 impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn get_right_value(&self, left_value: Value<'v>) -> Value<'v> {
-        println!("{:?}", left_value);
         left_value.as_right_value(&self.builder)
     }
 

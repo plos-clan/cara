@@ -41,6 +41,9 @@ impl<'t> TypeKind<'t> {
     }
 
     pub fn new_array(&self, size: u32) -> Self {
+        if matches!(self, TypeKind::Unit(_)) {
+            return Self::new_unit();
+        }
         TypeKind::Array {
             ty: self.array_type(size),
             element: Box::new(self.clone()),
@@ -98,6 +101,7 @@ impl<'t> TypeKind<'t> {
                     .map(|v| v.into_pointer_value())
                     .collect::<Vec<_>>(),
             ),
+            TypeKind::Unit(_) => return Value::Unit,
             _ => panic!("Incorrect usage of type."),
         };
         Value::Array {
