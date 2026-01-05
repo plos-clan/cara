@@ -65,7 +65,9 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_deref(&mut self, deref: &ast::Deref) -> Value<'v> {
         let ptr = self.visit_right_value(&deref.exp);
-        println!("{:?}", ptr);
+        if matches!(ptr, Value::Unit) {
+            return Value::Unit;
+        }
         let ty = ptr.type_();
         let pointee_ty = ty.derefed();
 
