@@ -179,6 +179,11 @@ peg::parser! {
                 }))
             }
             --
+            l: position!() "&" _ e: (@) {
+                let span = Span::new(l, e.span().end());
+                Exp::GetAddr(Box::new(GetAddr { exp: e, span }))
+            } 
+            --
             l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: position!() {
                 let span = Span::new(l.span().start(), r);
                 Exp::Call(Box::new(Call {
@@ -199,7 +204,6 @@ peg::parser! {
             n: number() { n }
             s: string_wrapper() { s }
             v: var() { Exp::Var(Box::new(v)) }
-            g: get_addr() { Exp::GetAddr(Box::new(g)) }
             b: block() { Exp::Block(Box::new(b)) }
             a: array() { Exp::Array(Box::new(a)) }
         }
@@ -233,14 +237,6 @@ peg::parser! {
         rule deref() -> Deref
               = l: position!() "*" _ e: expr() r: position!() {
             Deref {
-                exp: e,
-                span: Span::new(l, r)
-            }
-        }
-
-        rule get_addr() -> GetAddr
-              = l: position!() "*" _ e: expr() r: position!() {
-            GetAddr{
                 exp: e,
                 span: Span::new(l, r)
             }

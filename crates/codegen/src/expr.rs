@@ -15,6 +15,10 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn get_right_value(&self, left_value: Value<'v>) -> Value<'v> {
         left_value.as_right_value(&self.builder)
     }
+    
+    fn pass_left_value_as_right_value(&self, left_value: Value<'v>) -> Value<'v> {
+        left_value.convert_to_right_value()
+    }
 
     fn visit_binary(&mut self, op: &BinaryOp, lhs_: Value<'v>, rhs_: Value<'v>) -> Value<'v> {
         let lhs = lhs_.as_basic_value_enum();
@@ -59,12 +63,17 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         <Self as BlockVisitor<Value<'v>>>::visit_block(self, block).unwrap_or(Value::Unit)
     }
 
-    fn visit_deref(&mut self, _deref: &ast::Deref) -> Value<'v> {
-        unimplemented!()
-    }
+    fn visit_deref(&mut self, deref: &ast::Deref) -> Value<'v> {
+        let ptr = self.visit_right_value(&deref.exp);
+        println!("{:?}", ptr);
+        let ty = ptr.type_();
+        let pointee_ty = ty.derefed();
 
-    fn visit_get_addr(&mut self, _get_addr: &ast::GetAddr) -> Value<'v> {
-        unimplemented!()
+        let result = self
+            .builder
+            .build_load(pointee_ty.clone(), ptr.get_pointer(), "")
+            .unwrap();
+        Value::new_from(result.as_any_value_enum(), pointee_ty)
     }
 
     fn visit_index(&mut self, index_node: &ast::Index) -> Value<'v> {
@@ -79,7 +88,10 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                 .build_gep(pointee_ty.clone(), ptr, &[index.as_int(&self.builder)], "")
                 .unwrap()
         };
-        Value::Alloca { value: ptr, value_ty: pointee_ty }
+        Value::Alloca {
+            value: ptr,
+            value_ty: pointee_ty,
+        }
     }
 
     fn visit_number(&mut self, number: &ast::Number) -> Value<'v> {

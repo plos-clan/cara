@@ -7,7 +7,8 @@ const main = extern C[main] fn() -> i64 {
     test_unit();
     test();
     b[0] = fib(fib_num);
-    b[0]
+    let mut test_var = &(b[0]);
+    *test_var
 };
 
 const test_unit = fn() -> [();2] {

@@ -14,6 +14,8 @@ pub trait CompUnitVisitor {
 
 pub trait ExpVisitor<V> {
     fn get_right_value(&self, left_value: V) -> V;
+    /// This function shouldn't generate instructions like load.
+    fn pass_left_value_as_right_value(&self, left_value: V) -> V;
 
     fn visit_left_value(&mut self, exp: &Exp) -> V {
         match exp {
@@ -27,7 +29,10 @@ pub trait ExpVisitor<V> {
             Exp::Call(call) => self.visit_call(call),
             Exp::Deref(deref) => self.visit_deref(deref),
             Exp::Exp(exp, _) => self.visit_left_value(exp),
-            Exp::GetAddr(get_addr) => self.visit_left_value(&get_addr.exp),
+            Exp::GetAddr(get_addr) => {
+                let exp = self.visit_left_value(&get_addr.exp);
+                self.pass_left_value_as_right_value(exp)
+            },
             Exp::Index(index) => self.visit_index(index),
             Exp::Var(var) => self.visit_var(var),
             Exp::Number(number) => self.visit_number(number),
@@ -54,7 +59,6 @@ pub trait ExpVisitor<V> {
     fn visit_unary(&mut self, op: &UnaryOp, value: V) -> V;
     fn visit_call(&mut self, call: &Call) -> V;
     fn visit_deref(&mut self, deref: &Deref) -> V;
-    fn visit_get_addr(&mut self, get_addr: &GetAddr) -> V;
     fn visit_index(&mut self, index: &Index) -> V;
     fn visit_var(&mut self, var: &Var) -> V;
     fn visit_number(&mut self, number: &Number) -> V;

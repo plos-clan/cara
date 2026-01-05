@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ast::{
-    Array, BinaryOp, Block, Call, Deref, FunctionDef, GetAddr, Index, Number, UnaryOp, Var,
+    Array, BinaryOp, Block, Call, Deref, FunctionDef, Index, Number, UnaryOp, Var,
     visitor::ExpVisitor,
 };
 
@@ -9,6 +9,10 @@ use crate::{ConstEvalContext, info::Value, queries::CONST_EVAL_PROVIDER};
 
 impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     fn get_right_value(&self, left_value: Value) -> Value {
+        left_value
+    }
+    
+    fn pass_left_value_as_right_value(&self, left_value: Value) -> Value {
         left_value
     }
 
@@ -53,10 +57,6 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
 
     fn visit_function(&mut self, func: &FunctionDef) -> Value {
         Value::Function(Arc::new(func.clone()))
-    }
-
-    fn visit_get_addr(&mut self, _get_addr: &GetAddr) -> Value {
-        unimplemented!()
     }
 
     fn visit_index(&mut self, _index: &Index) -> Value {

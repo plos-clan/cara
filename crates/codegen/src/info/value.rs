@@ -59,6 +59,16 @@ impl<'v> Value<'v> {
             _ => self.clone(),
         }
     }
+
+    pub fn convert_to_right_value(&self) -> Self {
+        match self {
+            Self::Alloca { value, value_ty } => Self::Pointer {
+                value: *value,
+                ty: value_ty.new_ptr(),
+            },
+            _ => self.clone(),
+        }
+    }
 }
 
 impl<'v> Value<'v> {

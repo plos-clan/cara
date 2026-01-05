@@ -4,6 +4,7 @@ use crate::MonomorphizeContext;
 
 impl ExpVisitor<()> for MonomorphizeContext<'_> {
     fn get_right_value(&self, _left_value: ()) {}
+    fn pass_left_value_as_right_value(&self, _left_value: ()) {}
 
     fn visit_array(&mut self, array: &Array) {
         match array {
@@ -12,7 +13,7 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
                     self.visit_right_value(element);
                 }
             }
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 
@@ -37,10 +38,6 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
 
     fn visit_function(&mut self, _func: &ast::FunctionDef) {
         unreachable!()
-    }
-
-    fn visit_get_addr(&mut self, get_addr: &ast::GetAddr) {
-        self.visit_left_value(&get_addr.exp)
     }
 
     fn visit_if_exp(&mut self, if_exp: &ast::IfExp) {

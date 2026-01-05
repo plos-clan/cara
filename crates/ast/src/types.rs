@@ -6,7 +6,7 @@ use crate::Span;
 pub enum TypeEnum {
     Signed(u32),
     Unsigned(u32),
-    
+
     Array(Box<Type>, u32),
 
     Unit,
