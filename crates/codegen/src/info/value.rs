@@ -25,7 +25,7 @@ pub enum Value<'v> {
 
 impl<'v> Value<'v> {
     pub fn as_int(&self, builder: &Builder<'v>) -> IntValue<'v> {
-        let Value::Int(v) = self.into_value(builder) else {
+        let Value::Int(v) = self.as_right_value(builder) else {
             unreachable!()
         };
         v
@@ -40,17 +40,17 @@ impl<'v> Value<'v> {
 
     pub fn get_pointer(&self) -> PointerValue<'v> {
         match self {
-            Value::Pointer { value, .. } => value.clone(),
-            Value::Alloca { value, .. } => value.clone(),
+            Value::Pointer { value, .. } => *value,
+            Value::Alloca { value, .. } => *value,
             _ => unreachable!(),
         }
     }
 
-    pub fn into_value(&self, builder: &Builder<'v>) -> Self {
+    pub fn as_right_value(&self, builder: &Builder<'v>) -> Self {
         match self {
             Self::Alloca { value, value_ty } => {
                 let loaded = builder
-                    .build_load(value_ty.clone(), value.clone(), "")
+                    .build_load(value_ty.clone(), *value, "")
                     .unwrap();
                 Self::new_from(loaded.as_any_value_enum(), value_ty.clone())
             }
@@ -83,7 +83,7 @@ impl<'v> Value<'v> {
                 ty: ty.clone(),
             },
             AnyValueEnum::FunctionValue(v) => Value::Function(v, ty.clone()),
-            _ => unreachable!(),
+            _ => panic!("unexpected: {}", value),
         }
     }
 }

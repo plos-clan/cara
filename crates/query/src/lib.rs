@@ -22,11 +22,7 @@ impl<'d> QueryContext<'d> {
         }
         Arc::new(Self {
             consts,
-            thread_pool: ThreadPoolBuilder::new()
-                .use_current_thread()
-                .num_threads(1)
-                .build()
-                .unwrap(),
+            thread_pool: ThreadPoolBuilder::new().build().unwrap(),
         })
     }
 }
@@ -67,5 +63,9 @@ impl<'d> QueryContext<'d> {
 
     pub fn get_def(&self, def_id: DefId) -> Option<&&ConstDef> {
         self.consts.get(&def_id)
+    }
+
+    pub fn def_ids(&self) -> Vec<DefId> {
+        self.consts.keys().copied().collect()
     }
 }

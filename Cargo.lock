@@ -50,6 +50,7 @@ dependencies = [
  "anyhow",
  "codegen",
  "parser",
+ "query",
 ]
 
 [[package]]
@@ -75,8 +76,8 @@ dependencies = [
  "ast",
  "const_eval",
  "inkwell",
+ "monomorphize",
  "query",
- "send_wrapper",
  "uuid",
 ]
 
@@ -204,6 +205,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "monomorphize"
+version = "0.1.0"
+dependencies = [
+ "ast",
+ "const_eval",
+ "query",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -315,12 +325,6 @@ name = "semver"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
-
-[[package]]
-name = "send_wrapper"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 
 [[package]]
 name = "shlex"

@@ -1,3 +1,4 @@
+use const_eval::queries::CONST_EVAL_PROVIDER;
 use inkwell::{
     IntPredicate,
     types::BasicTypeEnum,
@@ -9,12 +10,11 @@ use ast::{Array, Assign, BinaryOp, Call, Var, visitor::ExpVisitor};
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
     info::{Symbol, Value},
-    queries::{CODEGEN_PROVIDER, CodegenResult},
 };
 
 impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn get_right_value(&self, left_value: Value<'v>) -> Value<'v> {
-        left_value.into_value(&self.builder)
+        left_value.as_right_value(&self.builder)
     }
 
     fn visit_binary(&mut self, op: &BinaryOp, lhs_: Value<'v>, rhs_: Value<'v>) -> Value<'v> {
@@ -146,32 +146,14 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         } else {
             let def_id = self.queries.lookup_def_id(&name).unwrap();
 
-            if self.current_def_id == def_id {
-                return self.current_fn.clone();
-            }
+            let value = self.queries.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
 
-            let CodegenResult { module, mut value } = self
-                .queries
-                .query_cached(&CODEGEN_PROVIDER, def_id)
-                .unwrap()
-                .take();
-
-            if let Some(module) = module {
-                let name = match value {
-                    Value::Function(f, _) => f.get_name().to_string_lossy().to_string(),
-                    _ => unreachable!(),
-                };
-
-                self.module.link_in_module(module).unwrap();
-
-                let Value::Function(_, ty) = value else {
-                    unreachable!();
-                };
-                value = Value::Function(self.module.get_function(&name).unwrap(), ty);
-
-                value
-            } else {
-                value
+            match value {
+                const_eval::Value::Function(_) => self.global_funcs.get(&def_id).unwrap().clone(),
+                const_eval::Value::Int(i) => {
+                    Value::Int(LLVM_CONTEXT.i32_type().const_int(i as u64, true))
+                }
+                const_eval::Value::Unit => Value::Unit,
             }
         }
     }
@@ -240,7 +222,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
         self.builder.position_at_end(else_block);
         let (else_present, else_value) = if let Some(else_block) = if_exp.else_branch.as_ref() {
-            let else_value = self.visit_block(&else_block);
+            let else_value = self.visit_block(else_block);
             (true, else_value)
         } else if let Some(else_if) = if_exp.else_if.as_ref() {
             let else_value = self.visit_if_exp(else_if);

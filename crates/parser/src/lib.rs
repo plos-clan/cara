@@ -219,7 +219,7 @@ peg::parser! {
                     condition: c,
                     then_branch: t,
                     else_branch: None,
-                    else_if: i.map(|i| Box::new(i)),
+                    else_if: i.map(Box::new),
                     span: Span::new(l, r)
                 }
             }
