@@ -52,20 +52,65 @@ pub fn init() {
 
 type FunctionMap = BTreeMap<DefId, Value<'static>>;
 
-pub fn codegen(ctx: Arc<QueryContext<'_>>) {
-    let target_triple = TargetMachine::get_default_triple();
-    let target = Target::from_triple(&target_triple).unwrap();
-    let target_machine = target
-        .create_target_machine(
-            &target_triple,
-            "generic",
-            "",
-            OptimizationLevel::Aggressive,
-            RelocMode::Default,
-            CodeModel::Default,
-        )
-        .unwrap();
+pub struct CodegenResult {
+    module: Arc<Module<'static>>,
+    target_machine: TargetMachine,
+}
 
+impl CodegenResult {
+    fn new(module: Arc<Module<'static>>) -> Self {
+        let target_triple = TargetMachine::get_default_triple();
+        let target = Target::from_triple(&target_triple).unwrap();
+        let target_machine = target
+            .create_target_machine(
+                &target_triple,
+                "generic",
+                "",
+                OptimizationLevel::Aggressive,
+                RelocMode::Default,
+                CodeModel::Default,
+            )
+            .unwrap();
+
+        CodegenResult {
+            module,
+            target_machine,
+        }
+    }
+}
+
+impl CodegenResult {
+    pub fn dump(&self) {
+        self.module.print_to_stderr();
+    }
+
+    pub fn optimize(&self) {
+        let passes: &[&str] = &[
+            "instcombine",
+            "reassociate",
+            "gvn",
+            "simplifycfg",
+            "mem2reg",
+            "dce",
+            "dse",
+        ];
+
+        let options = PassBuilderOptions::create();
+        options.set_verify_each(true);
+
+        self.module
+            .run_passes(passes.join(",").as_str(), &self.target_machine, options)
+            .unwrap();
+    }
+
+    pub fn write_to_file(&self, output_path: &Path) {
+        self.target_machine
+            .write_to_file(&self.module, FileType::Object, output_path)
+            .unwrap();
+    }
+}
+
+pub fn codegen(ctx: Arc<QueryContext<'_>>) -> CodegenResult {
     let codegen_units = ctx.query(&COLLECT_CODEGEN_UNITS, ()).unwrap();
 
     let (module, global_funcs) = generate_defs(ctx.clone(), &codegen_units);
@@ -79,32 +124,9 @@ pub fn codegen(ctx: Arc<QueryContext<'_>>) {
 
     module.print_to_stderr();
 
-    let passes: &[&str] = &[
-        "instcombine",
-        "reassociate",
-        "gvn",
-        "simplifycfg",
-        "mem2reg",
-        "dce",
-        "dse",
-    ];
-
-    let options = PassBuilderOptions::create();
-    options.set_verify_each(true);
-
-    module
-        .run_passes(passes.join(",").as_str(), &target_machine, options)
-        .unwrap();
-
     module.print_to_stderr();
 
-    target_machine
-        .write_to_file(&module, FileType::Object, Path::new("test.o"))
-        .unwrap();
-
-    target_machine
-        .write_to_file(&module, FileType::Assembly, Path::new("test.asm"))
-        .unwrap();
+    CodegenResult::new(module)
 }
 
 fn generate_defs(

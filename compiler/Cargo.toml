@@ -8,6 +8,7 @@ parser.workspace = true
 anyhow.workspace = true
 codegen.workspace = true
 query.workspace = true
+argh = "0.1.13"
 
 [features]
 trace = ["parser/trace"]
