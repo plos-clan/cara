@@ -10,6 +10,7 @@ codegen.workspace = true
 query.workspace = true
 argh = "0.1.13"
 codegen_llvm = { version = "0.1.0", path = "../crates/codegen_llvm" }
+tempfile = "3.24.0"
 
 [features]
 trace = ["parser/trace"]

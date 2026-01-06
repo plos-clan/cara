@@ -1,33 +1,13 @@
-use std::{fs::File, io::Read};
+use std::{cell::LazyCell, fs::File, io::Read, process::Command};
 
-use argh::FromArgs;
-use codegen::{EmitOptions, codegen};
+use codegen::{EmitOptions, OutputType, codegen};
 use codegen_llvm::LLVMBackend;
 use query::QueryContext;
+use tempfile::NamedTempFile;
 
-/// Cara compiler
-#[derive(FromArgs)]
-struct Args {
-    #[argh(subcommand)]
-    nested: Subcommand,
-}
+use args::*;
 
-#[derive(FromArgs)]
-#[argh(subcommand)]
-enum Subcommand {
-    Build(BuildCommand),
-}
-
-/// Builds the cara file.
-#[derive(FromArgs)]
-#[argh(subcommand, name = "build")]
-struct BuildCommand {
-    #[argh(positional)]
-    input_file: String,
-    /// the output path.
-    #[argh(option, default = "String::from(\"a.out\")", short = 'o')]
-    output_file: String,
-}
+mod args;
 
 fn main() -> anyhow::Result<()> {
     let args = argh::from_env::<Args>();
@@ -37,11 +17,23 @@ fn main() -> anyhow::Result<()> {
             let BuildCommand {
                 input_file,
                 output_file,
+                emit,
             } = build;
 
+            let temp_file = LazyCell::new(|| NamedTempFile::new().unwrap());
+
+            let output_path = match emit {
+                BuildResult::Executable => temp_file.path().to_str().unwrap().into(),
+                _ => output_file.clone(),
+            };
+
             let emit_options = EmitOptions::builder()
-                .path(output_file)
-                .output_type(codegen::OutputType::Object)
+                .path(output_path)
+                .output_type(match emit {
+                    BuildResult::Ir => OutputType::Ir,
+                    BuildResult::Asm => OutputType::Asm,
+                    BuildResult::Object | BuildResult::Executable => OutputType::Object,
+                })
                 .build();
 
             let mut source_code = String::new();
@@ -55,6 +47,16 @@ fn main() -> anyhow::Result<()> {
             codegen_result.optimize();
             codegen_result.dump();
             codegen_result.emit(emit_options);
+
+            if matches!(emit, BuildResult::Executable) {
+                let mut child = Command::new("gcc")
+                    .arg("-o")
+                    .arg(output_file)
+                    .arg(temp_file.path())
+                    .spawn()?;
+
+                child.wait()?;
+            }
         }
     }
 
