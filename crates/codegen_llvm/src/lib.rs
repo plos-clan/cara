@@ -6,7 +6,9 @@ use std::{
 };
 
 use ast::{FunctionDef, visitor::BlockVisitor};
-use codegen::{CodegenBackend, CodegenResult, EmitOptions, OutputType};
+use codegen::{
+    BackendOptions, CodegenBackend, CodegenBackendBase, CodegenResult, EmitOptions, OutputType,
+};
 use const_eval::queries::CONST_EVAL_PROVIDER;
 use inkwell::{
     OptimizationLevel,
@@ -45,14 +47,19 @@ impl Deref for LLVMContext {
 
 static LLVM_CONTEXT: LazyLock<LLVMContext> = LazyLock::new(|| LLVMContext(Context::create()));
 
-pub struct LLVMBackend;
+pub struct LLVMBackend {
+    backend_options: BackendOptions,
+}
 
-impl CodegenBackend for LLVMBackend {
-    fn init(&self) {
+impl CodegenBackendBase for LLVMBackend {
+    fn new(backend_options: BackendOptions) -> Self {
         LazyLock::force(&LLVM_CONTEXT);
         Target::initialize_all(&InitializationConfig::default());
+        Self { backend_options }
     }
+}
 
+impl CodegenBackend for LLVMBackend {
     fn codegen(
         &self,
         ctx: Arc<QueryContext<'_>>,
@@ -67,7 +74,7 @@ impl CodegenBackend for LLVMBackend {
             Self::codegen_item(ctx.clone(), def_id, global_funcs.clone(), module.clone());
         }
 
-        Box::new(LLVMCodegenResult::new(module))
+        Box::new(LLVMCodegenResult::new(module, self.backend_options))
     }
 }
 
@@ -183,7 +190,33 @@ pub struct LLVMCodegenResult {
 }
 
 impl LLVMCodegenResult {
-    fn new(module: Arc<Module<'static>>) -> Self {
+    fn new(module: Arc<Module<'static>>, backend_options: BackendOptions) -> Self {
+        let BackendOptions {
+            code_model,
+            optimize_level,
+            reloc_mode,
+        } = backend_options;
+
+        let code_model = match code_model {
+            codegen::CodeModel::Default => CodeModel::Default,
+            codegen::CodeModel::Large => CodeModel::Large,
+            codegen::CodeModel::Medium => CodeModel::Medium,
+            codegen::CodeModel::Small => CodeModel::Small,
+            codegen::CodeModel::Kernel => CodeModel::Kernel,
+        };
+        let optimize_level = match optimize_level {
+            codegen::OptimizeLevel::O0 => OptimizationLevel::None,
+            codegen::OptimizeLevel::O1 => OptimizationLevel::Less,
+            codegen::OptimizeLevel::O2 => OptimizationLevel::Default,
+            codegen::OptimizeLevel::O3 => OptimizationLevel::Aggressive,
+        };
+        let reloc_mode = match reloc_mode {
+            codegen::RelocMode::Default => RelocMode::Default,
+            codegen::RelocMode::Static => RelocMode::Static,
+            codegen::RelocMode::Pic => RelocMode::PIC,
+            codegen::RelocMode::DynamicNoPic => RelocMode::DynamicNoPic,
+        };
+
         let target_triple = TargetMachine::get_default_triple();
         let target = Target::from_triple(&target_triple).unwrap();
         let target_machine = target
@@ -191,9 +224,9 @@ impl LLVMCodegenResult {
                 &target_triple,
                 "generic",
                 "",
-                OptimizationLevel::Aggressive,
-                RelocMode::Default,
-                CodeModel::Default,
+                optimize_level,
+                reloc_mode,
+                code_model,
             )
             .unwrap();
 

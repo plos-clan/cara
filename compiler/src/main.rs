@@ -1,6 +1,6 @@
 use std::{cell::LazyCell, fs::File, io::Read, process::Command};
 
-use codegen::{EmitOptions, OutputType, codegen};
+use codegen::{BackendOptions, CodegenBackendBase, EmitOptions, OutputType, codegen};
 use codegen_llvm::LLVMBackend;
 use query::QueryContext;
 use tempfile::NamedTempFile;
@@ -18,6 +18,9 @@ fn main() -> anyhow::Result<()> {
                 input_file,
                 output_file,
                 emit,
+                code_model,
+                optimize_level,
+                reloc_mode,
             } = build;
 
             let temp_file = LazyCell::new(|| NamedTempFile::new().unwrap());
@@ -26,6 +29,12 @@ fn main() -> anyhow::Result<()> {
                 BuildResult::Executable => temp_file.path().to_str().unwrap().into(),
                 _ => output_file.clone(),
             };
+
+            let backend_options = BackendOptions::builder()
+                .code_model(code_model.into())
+                .optimize_level(optimize_level.into())
+                .reloc_mode(reloc_mode.into())
+                .build();
 
             let emit_options = EmitOptions::builder()
                 .path(output_path)
@@ -42,10 +51,8 @@ fn main() -> anyhow::Result<()> {
             let ast = parser::parse(&source_code)?;
             let query_ctx = QueryContext::new(&ast);
 
-            let codegen_result = codegen(query_ctx, &LLVMBackend);
-            codegen_result.dump();
+            let codegen_result = codegen(query_ctx, &LLVMBackend::new(backend_options));
             codegen_result.optimize();
-            codegen_result.dump();
             codegen_result.emit(emit_options);
 
             if matches!(emit, BuildResult::Executable) {
