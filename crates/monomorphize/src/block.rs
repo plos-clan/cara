@@ -1,4 +1,4 @@
-use ast::visitor::BlockVisitor;
+use ast::visitor::{BlockVisitor, ExpVisitor};
 
 use crate::MonomorphizeContext;
 
@@ -14,6 +14,7 @@ impl BlockVisitor<()> for MonomorphizeContext<'_> {
     fn visit_inline_asm(&mut self, _inline_asm: &ast::InlineAsm) {}
 
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
+        self.visit_right_value(&var_def.initial_value);
         self.push_symbol(var_def.name.clone());
     }
 }

@@ -14,7 +14,6 @@ use inkwell::{
     module::Module,
     passes::PassBuilderOptions,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
-    values::AnyValue,
 };
 use monomorphize::queries::COLLECT_CODEGEN_UNITS;
 use query::{DefId, QueryContext};
@@ -181,16 +180,15 @@ fn codegen_item(
     for (id, param) in params.iter().enumerate() {
         let ty = get_llvm_type(&param.param_type);
 
-        ctx.symbols.pre_push(Symbol::ImmutableVar(
-            param.name.clone(),
-            Value::new_from(
-                function
-                    .get_nth_param(id as u32)
-                    .unwrap()
-                    .as_any_value_enum(),
-                ty,
-            ),
-        ));
+        let ptr = ctx.create_entry_bb_alloca(&param.name, ty);
+        ctx.builder
+            .build_store(
+                ptr.get_pointer(),
+                function.get_nth_param(id as u32).unwrap(),
+            )
+            .unwrap();
+
+        ctx.symbols.pre_push(Symbol::Var(param.name.clone(), ptr));
     }
 
     if let Some(value) = ctx.visit_block(block)
@@ -234,7 +232,10 @@ impl<'v> VisitorCtx<'v> {
             }
         }
 
-        let alloca_ty = ty.clone();
+        let alloca_ty = match ty {
+            TypeKind::Unit(_) => TypeKind::new_int(8).new_array(0),
+            _ => ty.clone(),
+        };
 
         Value::Alloca {
             value: builder.build_alloca(alloca_ty, name).unwrap(),

@@ -7,8 +7,7 @@ pub struct SymbolStack<'s> {
 
 #[derive(Debug)]
 pub enum Symbol<'s> {
-    MutableVar(String, Value<'s>),
-    ImmutableVar(String, Value<'s>),
+    Var(String, Value<'s>),
 }
 
 impl<'s> SymbolStack<'s> {
@@ -44,12 +43,7 @@ impl<'s> SymbolStack<'s> {
         for table in self.symbols.iter().rev() {
             for symbol in table.iter().rev() {
                 match symbol {
-                    Symbol::MutableVar(symbol_name, _) => {
-                        if symbol_name == name {
-                            return Some(symbol);
-                        }
-                    }
-                    Symbol::ImmutableVar(symbol_name, _) => {
+                    Symbol::Var(symbol_name, _) => {
                         if symbol_name == name {
                             return Some(symbol);
                         }

@@ -182,7 +182,7 @@ peg::parser! {
             l: position!() "&" _ e: (@) {
                 let span = Span::new(l, e.span().end());
                 Exp::GetAddr(Box::new(GetAddr { exp: e, span }))
-            } 
+            }
             --
             l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: position!() {
                 let span = Span::new(l.span().start(), r);

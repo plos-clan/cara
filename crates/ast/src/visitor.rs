@@ -32,7 +32,7 @@ pub trait ExpVisitor<V> {
             Exp::GetAddr(get_addr) => {
                 let exp = self.visit_left_value(&get_addr.exp);
                 self.pass_left_value_as_right_value(exp)
-            },
+            }
             Exp::Index(index) => self.visit_index(index),
             Exp::Var(var) => self.visit_var(var),
             Exp::Number(number) => self.visit_number(number),

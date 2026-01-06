@@ -15,7 +15,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn get_right_value(&self, left_value: Value<'v>) -> Value<'v> {
         left_value.as_right_value(&self.builder)
     }
-    
+
     fn pass_left_value_as_right_value(&self, left_value: Value<'v>) -> Value<'v> {
         left_value.convert_to_right_value()
     }
@@ -70,6 +70,10 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         }
         let ty = ptr.type_();
         let pointee_ty = ty.derefed();
+
+        if pointee_ty.is_unit() {
+            return Value::Unit;
+        }
 
         let result = self
             .builder
@@ -131,13 +135,9 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             .iter()
             .map(|arg| self.visit_right_value(arg).into())
             .collect::<Vec<_>>();
-        let result = self
-            .builder
-            .build_call(func, &args, "")
-            .unwrap()
-            .as_any_value_enum();
+        let result = self.builder.build_call(func, &args, "").unwrap();
 
-        Value::new_from(result, ret_ty)
+        Value::new_from(result.as_any_value_enum(), ret_ty)
     }
 
     fn visit_array(&mut self, array: &Array) -> Value<'v> {
@@ -161,8 +161,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         let name = var.path.path.join(".");
         if let Some(symbol) = self.symbols.lookup(&name) {
             match symbol {
-                Symbol::MutableVar(_, ptr) => ptr.clone(),
-                Symbol::ImmutableVar(_, value) => value.clone(),
+                Symbol::Var(_, value) => value.clone(),
             }
         } else {
             let def_id = self.queries.lookup_def_id(&name).unwrap();

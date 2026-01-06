@@ -11,7 +11,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     fn get_right_value(&self, left_value: Value) -> Value {
         left_value
     }
-    
+
     fn pass_left_value_as_right_value(&self, left_value: Value) -> Value {
         left_value
     }

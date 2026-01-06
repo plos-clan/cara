@@ -17,21 +17,17 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
         let value = self.visit_right_value(&var_def.initial_value);
 
-        if var_def.mutable && !matches!(value, Value::Unit) {
-            let ty = value.type_();
-            let alloca = self.create_entry_bb_alloca(&var_def.name, ty);
-            let Value::Alloca { value: ptr, .. } = alloca else {
-                unreachable!()
-            };
+        let ty = value.type_();
+        let alloca = self.create_entry_bb_alloca(&var_def.name, ty);
+        let Value::Alloca { value: ptr, .. } = alloca else {
+            unreachable!()
+        };
 
+        if !value.is_unit() {
             self.builder.build_store(ptr, value).unwrap();
-
-            self.symbols
-                .push(Symbol::MutableVar(var_def.name.clone(), alloca));
-        } else {
-            self.symbols
-                .push(Symbol::ImmutableVar(var_def.name.clone(), value));
         }
+
+        self.symbols.push(Symbol::Var(var_def.name.clone(), alloca));
     }
 
     fn visit_inline_asm(&mut self, inline_asm: &ast::InlineAsm) {

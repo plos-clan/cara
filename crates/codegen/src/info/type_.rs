@@ -60,6 +60,12 @@ impl<'t> TypeKind<'t> {
 }
 
 impl<'t> TypeKind<'t> {
+    pub fn is_unit(&self) -> bool {
+        matches!(self, Self::Unit(_))
+    }
+}
+
+impl<'t> TypeKind<'t> {
     pub fn function(&self, arg_types: Vec<Self>) -> Self {
         let arg_types = arg_types
             .into_iter()
@@ -69,6 +75,7 @@ impl<'t> TypeKind<'t> {
             TypeKind::Unit(void_type) => TypeKind::Function(void_type.fn_type(&arg_types, false)),
             TypeKind::Int(int_type) => TypeKind::Function(int_type.fn_type(&arg_types, false)),
             TypeKind::Array { ty, element: _ } => TypeKind::Function(ty.fn_type(&arg_types, false)),
+            TypeKind::Ptr { ty, pointee: _ } => TypeKind::Function(ty.fn_type(&arg_types, false)),
             _ => unreachable!(),
         }
     }

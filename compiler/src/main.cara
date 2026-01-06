@@ -4,15 +4,16 @@ const main = extern C[main] fn() -> i64 {
     let mut a = "abcd";
     let mut b: [i64; 3] = test();
     let mut b_0 = 0i64;
-    test_unit();
+    let result = test_unit();
     test();
     b[0] = fib(fib_num);
     b[0]
 };
 
 const test_unit = fn() -> () {
-    let mut test_var = &();
-    *test_var
+    let test = ();
+    let test = &test;
+    *test
 };
 
 const fib = fn(n: i64) -> i64 {
