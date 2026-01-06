@@ -74,7 +74,7 @@ impl CodegenBackend for LLVMBackend {
 impl LLVMBackend {
     fn generate_defs(
         ctx: Arc<QueryContext<'_>>,
-        codegen_units: &Vec<DefId>,
+        codegen_units: &[DefId],
     ) -> (Module<'static>, FunctionMap) {
         let mut global_funcs = BTreeMap::new();
         let module = LLVM_CONTEXT.create_module("main");
