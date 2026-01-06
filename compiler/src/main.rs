@@ -1,7 +1,8 @@
-use std::{fs::File, io::Read, path::Path};
+use std::{fs::File, io::Read};
 
 use argh::FromArgs;
-use codegen::codegen;
+use codegen::{EmitOptions, codegen};
+use codegen_llvm::LLVMBackend;
 use query::QueryContext;
 
 /// Cara compiler
@@ -29,8 +30,6 @@ struct BuildCommand {
 }
 
 fn main() -> anyhow::Result<()> {
-    codegen::init();
-
     let args = argh::from_env::<Args>();
 
     match args.nested {
@@ -40,17 +39,22 @@ fn main() -> anyhow::Result<()> {
                 output_file,
             } = build;
 
+            let emit_options = EmitOptions::builder()
+                .path(output_file)
+                .output_type(codegen::OutputType::Object)
+                .build();
+
             let mut source_code = String::new();
             File::open(input_file)?.read_to_string(&mut source_code)?;
 
             let ast = parser::parse(&source_code)?;
             let query_ctx = QueryContext::new(&ast);
 
-            let codegen_result = codegen(query_ctx);
+            let codegen_result = codegen(query_ctx, &LLVMBackend);
             codegen_result.dump();
             codegen_result.optimize();
             codegen_result.dump();
-            codegen_result.write_to_file(Path::new(&output_file));
+            codegen_result.emit(emit_options);
         }
     }
 

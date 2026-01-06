@@ -1,0 +1,12 @@
+[package]
+name = "codegen_llvm"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ast.workspace = true
+const_eval = { version = "0.1.0", path = "../const_eval" }
+inkwell = { version = "0.7.0", features = ["llvm21-1"] }
+query.workspace = true
+uuid = { version = "1.19.0", features = ["v4"] }
+codegen.workspace = true
