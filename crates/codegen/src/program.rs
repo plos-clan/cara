@@ -16,16 +16,7 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
         let value = self.visit_right_value(&var_def.initial_value);
-
-        let ty = value.type_();
-        let alloca = self.create_entry_bb_alloca(&var_def.name, ty);
-        let Value::Alloca { value: ptr, .. } = alloca else {
-            unreachable!()
-        };
-
-        if !value.is_unit() {
-            self.builder.build_store(ptr, value).unwrap();
-        }
+        let alloca = self.create_entry_bb_alloca_with_init(&var_def.name, value);
 
         self.symbols.push(Symbol::Var(var_def.name.clone(), alloca));
     }

@@ -1,4 +1,5 @@
 use ast::{Array, visitor::ExpVisitor};
+use const_eval::{Value, queries::CONST_EVAL_PROVIDER};
 
 use crate::MonomorphizeContext;
 
@@ -29,6 +30,9 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
     }
 
     fn visit_call(&mut self, call: &ast::Call) {
+        for arg in &call.args {
+            self.visit_right_value(arg);
+        }
         self.visit_right_value(&call.func)
     }
 
@@ -72,8 +76,11 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
     fn visit_var(&mut self, var: &ast::Var) {
         let name = var.path.path.join(".");
         if !self.contains(&name) {
-            self.required_items
-                .push(self.ctx.lookup_def_id(name).unwrap());
+            let def_id = self.ctx.lookup_def_id(name).unwrap();
+            let result = self.ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
+            if let Value::Function(_) = result {
+                self.required_items.push(def_id);
+            }
         }
     }
 }

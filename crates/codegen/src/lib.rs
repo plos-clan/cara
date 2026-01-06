@@ -242,4 +242,15 @@ impl<'v> VisitorCtx<'v> {
             value_ty: ty,
         }
     }
+
+    fn create_entry_bb_alloca_with_init(&self, name: &str, init: Value<'v>) -> Value<'v> {
+        let alloca = self.create_entry_bb_alloca(name, init.type_());
+        let Value::Alloca { value: ptr, .. } = alloca else {
+            unreachable!()
+        };
+        if !init.is_unit() {
+            self.builder.build_store(ptr, init).unwrap();
+        }
+        alloca
+    }
 }

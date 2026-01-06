@@ -69,7 +69,7 @@ impl<'v> Value<'v> {
                 value: *value,
                 ty: value_ty.new_ptr(),
             },
-            _ => self.clone(),
+            _ => unreachable!(),
         }
     }
 }

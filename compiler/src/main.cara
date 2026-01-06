@@ -1,19 +1,13 @@
 const fib_num = 10i64;
 
 const main = extern C[main] fn() -> i64 {
-    let mut a = "abcd";
-    let mut b: [i64; 3] = test();
-    let mut b_0 = 0i64;
-    let result = test_unit();
-    test();
-    b[0] = fib(fib_num);
-    b[0]
+    let name = "abcd";
+    let k = &();
+    test_ptr(&fib(fib_num))
 };
 
-const test_unit = fn() -> () {
-    let test = ();
-    let test = &test;
-    *test
+const test_ptr = fn(value: *i64) -> i64 {
+    *value
 };
 
 const fib = fn(n: i64) -> i64 {

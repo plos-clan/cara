@@ -5,6 +5,7 @@ use inkwell::{
 };
 
 use ast::{Array, Assign, BinaryOp, Call, Var, visitor::ExpVisitor};
+use uuid::Uuid;
 
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
@@ -17,7 +18,12 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn pass_left_value_as_right_value(&self, left_value: Value<'v>) -> Value<'v> {
-        left_value.convert_to_right_value()
+        match left_value {
+            Value::Alloca { .. } => left_value.convert_to_right_value(),
+            _ => self
+                .create_entry_bb_alloca_with_init("", left_value)
+                .convert_to_right_value(),
+        }
     }
 
     fn visit_binary(&mut self, op: &BinaryOp, lhs_: Value<'v>, rhs_: Value<'v>) -> Value<'v> {
@@ -111,9 +117,14 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_str(&mut self, string: &str) -> Value<'v> {
         let string = LLVM_CONTEXT.const_string(string.as_bytes(), true);
-        Value::Array {
-            value: string,
-            ty: TypeKind::new_int(8).new_array(string.get_type().len()),
+        let global = self.module.add_global(
+            string.get_type(),
+            None,
+            &format!("alloc_{}", Uuid::new_v4()),
+        );
+        Value::Pointer {
+            value: global.as_pointer_value(),
+            ty: TypeKind::new_int(8).new_ptr(),
         }
     }
 
