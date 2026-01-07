@@ -27,7 +27,6 @@ use crate::{
     types::get_llvm_type,
 };
 
-mod defs;
 mod expr;
 mod info;
 mod program;
