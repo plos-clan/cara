@@ -19,6 +19,9 @@ pub enum Subcommand {
 pub struct BuildCommand {
     #[argh(positional)]
     pub input_file: String,
+    /// set if build in release mode.
+    #[argh(switch)]
+    pub release: bool,
     /// the output path.
     #[argh(option, default = "String::from(\"a.out\")", short = 'o')]
     pub output_file: String,

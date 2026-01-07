@@ -94,6 +94,19 @@ impl<'t> TypeKind<'t> {
         }
     }
 
+    pub fn const_int(&self, value: i64) -> Value<'t> {
+        match self {
+            TypeKind::Int(ty) => {
+                let mut int = ty.const_int(value.abs() as u64, true);
+                if value.is_negative() {
+                    int = int.const_neg();
+                }
+                Value::Int(int)
+            }
+            _ => panic!("Incorrect usage of type."),
+        }
+    }
+
     pub fn const_array(&self, values: &[Value<'t>]) -> Value<'t> {
         let value_iter = values.iter().map(|v| v.as_basic_value_enum());
         let value = match self {

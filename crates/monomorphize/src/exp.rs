@@ -83,4 +83,25 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
             }
         }
     }
+
+    fn visit_for(&mut self, for_: &ast::For) -> () {
+        self.visit_right_value(&for_.start);
+        self.visit_right_value(&for_.end);
+        if let Some(step) = &for_.step {
+            self.visit_right_value(step);
+        }
+        self.push_scope();
+        self.push_symbol(for_.var.clone());
+        self.visit_block(&for_.body);
+        self.pop_scope();
+    }
+
+    fn visit_loop(&mut self, loop_: &ast::Loop) -> () {
+        self.visit_block(&loop_.body);
+    }
+
+    fn visit_while(&mut self, while_: &ast::While) -> () {
+        self.visit_right_value(&while_.condition);
+        self.visit_block(&while_.body);
+    }
 }

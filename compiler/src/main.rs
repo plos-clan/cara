@@ -21,6 +21,7 @@ fn main() -> anyhow::Result<()> {
                 code_model,
                 optimize_level,
                 reloc_mode,
+                release,
             } = build;
 
             let temp_file = LazyCell::new(|| NamedTempFile::new().unwrap());
@@ -52,7 +53,9 @@ fn main() -> anyhow::Result<()> {
             let query_ctx = QueryContext::new(&ast);
 
             let codegen_result = codegen(query_ctx, &LLVMBackend::new(backend_options));
-            codegen_result.optimize();
+            if release {
+                codegen_result.optimize();
+            }
             codegen_result.emit(emit_options);
 
             if matches!(emit, BuildResult::Executable) {

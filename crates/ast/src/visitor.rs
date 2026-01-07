@@ -46,6 +46,9 @@ pub trait ExpVisitor<V> {
             Exp::Return(return_) => self.visit_return(return_),
             Exp::IfExp(if_exp) => self.visit_if_exp(if_exp),
             Exp::Unit(_) => self.visit_unit(),
+            Exp::For(for_) => self.visit_for(for_),
+            Exp::Loop(loop_) => self.visit_loop(loop_),
+            Exp::While(while_) => self.visit_while(while_),
         }
     }
 
@@ -70,6 +73,9 @@ pub trait ExpVisitor<V> {
     fn visit_if_exp(&mut self, if_exp: &IfExp) -> V;
     /// If this returns `Some`, the function returns the value.
     fn visit_return(&mut self, return_stmt: &Return) -> V;
+    fn visit_for(&mut self, for_: &For) -> V;
+    fn visit_loop(&mut self, loop_: &Loop) -> V;
+    fn visit_while(&mut self, while_: &While) -> V;
 }
 
 pub trait BlockVisitor<V>: ExpVisitor<V> {

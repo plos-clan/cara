@@ -44,6 +44,9 @@ pub enum Exp {
     Assign(Box<Assign>),
     Return(Box<Return>),
     IfExp(Box<IfExp>),
+    For(Box<For>),
+    Loop(Box<Loop>),
+    While(Box<While>),
     Unit(Span),
 }
 
@@ -67,6 +70,9 @@ impl Exp {
             Exp::Return(return_) => return_.span,
             Exp::IfExp(if_exp) => if_exp.span,
             Exp::Unit(span) => *span,
+            Exp::For(for_) => for_.span,
+            Exp::Loop(loop_) => loop_.span,
+            Exp::While(while_) => while_.span,
         }
     }
 }
@@ -135,6 +141,29 @@ pub struct IfExp {
     pub then_branch: Block,
     pub else_branch: Option<Block>,
     pub else_if: Option<Box<IfExp>>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Loop {
+    pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct While {
+    pub condition: Exp,
+    pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct For {
+    pub var: String,
+    pub start: Exp,
+    pub end: Exp,
+    pub step: Option<Exp>,
+    pub body: Block,
     pub span: Span,
 }
 

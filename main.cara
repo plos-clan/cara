@@ -1,13 +1,11 @@
 const fib_num = 10i64;
 
 const main = extern C[main] fn() -> i64 {
-    let name = "abcd";
-    let k = &();
-    test_ptr(&fib(fib_num))
-};
-
-const test_ptr = fn(value: *i64) -> i64 {
-    *value
+    let mut return_value = 0;
+    for a in (0,11) {
+        return_value = a + return_value;
+    };
+    return_value
 };
 
 const fib = fn(n: i64) -> i64 {
@@ -16,8 +14,4 @@ const fib = fn(n: i64) -> i64 {
     } else {
         fib(n - 1i64) + fib(n - 2i64)
     }
-};
-
-const test = fn() -> [i64; 3] {
-    [1i64, 2i64, 3i64]
 };

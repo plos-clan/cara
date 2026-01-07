@@ -193,6 +193,9 @@ peg::parser! {
                 }))
             }
             --
+            f: for_exp() { Exp::For(Box::new(f)) }
+            l: loop_exp() { Exp::Loop(Box::new(l)) }
+            w: while_exp() { Exp::While(Box::new(w)) }
             i: if_exp() { Exp::IfExp(Box::new(i)) }
             l: position!() "(" _ ")" r: position!() {
                 let span = Span::new(l, r);
@@ -207,6 +210,37 @@ peg::parser! {
             b: block() { Exp::Block(Box::new(b)) }
             a: array() { Exp::Array(Box::new(a)) }
         }
+
+        rule for_exp() -> For
+            = l: position!() "for" __ v: identifier() _ "in" _
+                "(" _ s: expr() _ "," _ e: expr() _ step: ("," _ step: expr() {step})? _ ","? _ ")" _
+                b: block() r: position!() {
+                For {
+                    var: v,
+                    start: s,
+                    end: e,
+                    step,
+                    body: b,
+                    span: Span::new(l, r)
+                }
+            }
+
+        rule loop_exp() -> Loop
+            = l: position!() "loop" _ b: block() r: position!() {
+                Loop {
+                    body: b,
+                    span: Span::new(l, r)
+                }
+            }
+
+        rule while_exp() -> While
+            = l: position!() "while" __ c: expr() _ b: block() r: position!() {
+                While {
+                    condition: c,
+                    body: b,
+                    span: Span::new(l, r)
+                }
+            }
 
         rule array() -> Array
             = l: position!() "[" _ values: (expr() ** ("," _)) _ "]" r: position!() {
