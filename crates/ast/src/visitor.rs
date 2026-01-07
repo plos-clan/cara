@@ -12,7 +12,7 @@ pub trait CompUnitVisitor {
     fn visit_const_def(&mut self, const_def: &ConstDef);
 }
 
-pub trait ExpVisitor<V> {
+pub trait ExpVisitor<V>: StatementVisitor<V> {
     fn get_right_value(&self, left_value: V) -> V;
     /// This function shouldn't generate instructions like load.
     fn pass_left_value_as_right_value(&self, left_value: V) -> V;
@@ -50,6 +50,7 @@ pub trait ExpVisitor<V> {
             Exp::For(for_) => self.visit_for(for_),
             Exp::Loop(loop_) => self.visit_loop(loop_),
             Exp::While(while_) => self.visit_while(while_),
+            Exp::TypeCast(type_cast) => self.visit_type_cast(type_cast),
         }
     }
 
@@ -71,6 +72,10 @@ pub trait ExpVisitor<V> {
     fn visit_proto(&mut self, proto_def: &ProtoDef) -> V;
     fn visit_function(&mut self, func: &FunctionDef) -> V;
     fn visit_unit(&mut self) -> V;
+    fn visit_type_cast(&mut self, type_cast: &TypeCast) -> V;
+}
+
+pub trait StatementVisitor<V> {
     fn visit_assign(&mut self, assign: &Assign) -> V;
     fn visit_if_exp(&mut self, if_exp: &IfExp) -> V;
     /// If this returns `Some`, the function returns the value.

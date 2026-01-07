@@ -4,6 +4,7 @@ use query::{DefId, QueryContext};
 
 mod block;
 mod exp;
+mod stmt;
 pub mod queries;
 
 struct MonomorphizeContext<'ctx> {

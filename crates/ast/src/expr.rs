@@ -49,6 +49,7 @@ pub enum Exp {
     While(Box<While>),
     ProtoDef(Box<ProtoDef>),
     Unit(Span),
+    TypeCast(Box<TypeCast>),
 }
 
 impl Exp {
@@ -75,8 +76,16 @@ impl Exp {
             Exp::Loop(loop_) => loop_.span,
             Exp::While(while_) => while_.span,
             Exp::ProtoDef(proto_def) => proto_def.span,
+            Exp::TypeCast(type_cast) => type_cast.span,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeCast {
+    pub exp: Exp,
+    pub ty: Type,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

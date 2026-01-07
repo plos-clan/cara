@@ -31,6 +31,7 @@ mod expr;
 mod info;
 mod program;
 mod types;
+mod stmt;
 
 struct LLVMContext(Context);
 
