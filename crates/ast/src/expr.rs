@@ -47,6 +47,7 @@ pub enum Exp {
     For(Box<For>),
     Loop(Box<Loop>),
     While(Box<While>),
+    ProtoDef(Box<ProtoDef>),
     Unit(Span),
 }
 
@@ -73,6 +74,7 @@ impl Exp {
             Exp::For(for_) => for_.span,
             Exp::Loop(loop_) => loop_.span,
             Exp::While(while_) => while_.span,
+            Exp::ProtoDef(proto_def) => proto_def.span,
         }
     }
 }

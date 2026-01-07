@@ -55,6 +55,10 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
         unimplemented!()
     }
 
+    fn visit_proto(&mut self, proto_def: &ast::ProtoDef) -> Value {
+        Value::Proto(Arc::new(proto_def.clone()))
+    }
+
     fn visit_function(&mut self, func: &FunctionDef) -> Value {
         Value::Function(Arc::new(func.clone()))
     }

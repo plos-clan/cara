@@ -41,6 +41,7 @@ pub trait ExpVisitor<V> {
                 let value = self.visit_right_value(value);
                 self.visit_unary(op, value)
             }
+            Exp::ProtoDef(proto_def) => self.visit_proto(proto_def),
             Exp::Function(func) => self.visit_function(func),
             Exp::Assign(assign) => self.visit_assign(assign),
             Exp::Return(return_) => self.visit_return(return_),
@@ -67,6 +68,7 @@ pub trait ExpVisitor<V> {
     fn visit_number(&mut self, number: &Number) -> V;
     fn visit_str(&mut self, string: &str) -> V;
     fn visit_block(&mut self, block: &Block) -> V;
+    fn visit_proto(&mut self, proto_def: &ProtoDef) -> V;
     fn visit_function(&mut self, func: &FunctionDef) -> V;
     fn visit_unit(&mut self) -> V;
     fn visit_assign(&mut self, assign: &Assign) -> V;

@@ -23,21 +23,26 @@ peg::parser! {
             GlobalItem::ConstDef(c)
         }
 
-        rule abi() -> Abi
-        = "extern" __ abi: $("C" / "c") _ "[" _ name: identifier() _ "]" {
+        rule abi_kind() -> Abi
+        = abi: $("C" / "c") _ "[" _ name: identifier() _ "]" {
             match abi {
                 "C" | "c" => Abi::CAbi(name),
                 _ => unreachable!(),
             }
         }
 
+        rule proto_def() -> ProtoDef
+        = l: position!() "proto" __ abi: abi_kind()? _ "fn" _ "(" _ params: (param() ** ",") _ ")" return_type: (__ "->" _ t: type_() {t})? _ r: position!() {
+            ProtoDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, span: Span::new(l, r) }
+        }
+
         rule function_def() -> FunctionDef
-        = l: position!() _ abi: abi()? _ "fn" _ "(" _ params: (param() ** ",") _ ")" return_type: (__ "->" _ t: type_() {t})? _ block: block() _ r: position!() {
+        = l: position!() abi: ("extern" __ a: abi_kind() {a})? _ "fn" _ "(" _ params: (param() ** ",") _ ")" return_type: (__ "->" _ t: type_() {t})? _ block: block() _ r: position!() {
             FunctionDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, block, span: Span::new(l, r) }
         }
 
         rule const_def() -> ConstDef
-        = l: position!() _ "const" __ name: identifier() _ "=" _ value: const_initial_value() _ ";" r: position!() {
+        = l: position!() "const" __ name: identifier() _ "=" _ value: const_initial_value() _ ";" r: position!() {
             ConstDef { name, initial_value: value, span: Span::new(l, r) }
         }
 
@@ -88,6 +93,7 @@ peg::parser! {
         }
 
         rule expr() -> Exp =
+            p: proto_def() { Exp::ProtoDef(Box::new(p)) } /
             f: function_def() { Exp::Function(Box::new(f)) } /
             e: expr_impl() { e }
 

@@ -40,6 +40,10 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
         self.visit_left_value(&deref.exp);
     }
 
+    fn visit_proto(&mut self, _proto_def: &ast::ProtoDef) {
+        unreachable!()
+    }
+
     fn visit_function(&mut self, _func: &ast::FunctionDef) {
         unreachable!()
     }
@@ -78,7 +82,7 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
         if !self.contains(&name) {
             let def_id = self.ctx.lookup_def_id(name).unwrap();
             let result = self.ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
-            if let Value::Function(_) = result {
+            if matches!(result, Value::Function(_) | Value::Proto(_)) {
                 self.required_items.push(def_id);
             }
         }

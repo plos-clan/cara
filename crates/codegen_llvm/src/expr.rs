@@ -1,6 +1,7 @@
 use const_eval::queries::CONST_EVAL_PROVIDER;
 use inkwell::{
     IntPredicate,
+    module::Linkage,
     values::{AnyValue, BasicValue, InstructionOpcode},
 };
 
@@ -122,6 +123,11 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             None,
             &format!("alloc_{}", Uuid::new_v4()),
         );
+        global.set_unnamed_addr(true);
+        global.set_initializer(&string);
+        global.set_linkage(Linkage::Private);
+        global.set_constant(true);
+        global.set_alignment(1);
         Value::Pointer {
             value: global.as_pointer_value(),
             ty: TypeKind::new_int(8).new_ptr(),
@@ -180,7 +186,9 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             let value = self.queries.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
 
             match value {
-                const_eval::Value::Function(_) => self.global_funcs.get(&def_id).unwrap().clone(),
+                const_eval::Value::Function(_) | const_eval::Value::Proto(_) => {
+                    self.global_funcs.get(&def_id).unwrap().clone()
+                }
                 const_eval::Value::Int((signed, width), i) => Value::Int(
                     LLVM_CONTEXT
                         .custom_width_int_type(width)
@@ -189,6 +197,10 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                 const_eval::Value::Unit => Value::Unit,
             }
         }
+    }
+
+    fn visit_proto(&mut self, _proto_def: &ast::ProtoDef) -> Value<'v> {
+        unreachable!()
     }
 
     fn visit_function(&mut self, _func: &ast::FunctionDef) -> Value<'v> {

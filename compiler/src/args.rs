@@ -143,7 +143,7 @@ impl FromArgValue for RelocMode {
 impl From<RelocMode> for codegen::RelocMode {
     fn from(value: RelocMode) -> Self {
         match value {
-            RelocMode::Default => Self::Default,
+            RelocMode::Default => Self::Pic,
             RelocMode::Static => Self::Static,
             RelocMode::Pic => Self::Pic,
             RelocMode::DynamicNoPic => Self::DynamicNoPic,

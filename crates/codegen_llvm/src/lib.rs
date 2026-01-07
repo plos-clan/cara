@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use ast::{FunctionDef, visitor::BlockVisitor};
+use ast::{FunctionDef, Param, ProtoDef, Type, visitor::BlockVisitor};
 use codegen::{
     BackendOptions, CodegenBackend, CodegenBackendBase, CodegenResult, EmitOptions, OutputType,
 };
@@ -14,6 +14,7 @@ use inkwell::{
     OptimizationLevel,
     builder::Builder,
     context::Context,
+    llvm_sys::LLVMCallConv,
     module::Module,
     passes::PassBuilderOptions,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
@@ -87,8 +88,33 @@ impl LLVMBackend {
         let module = LLVM_CONTEXT.create_module("main");
 
         for unit in codegen_units.iter() {
-            let const_eval::Value::Function(func) = ctx.query(&CONST_EVAL_PROVIDER, *unit).unwrap()
-            else {
+            let value = ctx.query(&CONST_EVAL_PROVIDER, *unit).unwrap();
+
+            if let const_eval::Value::Proto(proto) = value {
+                let ProtoDef {
+                    abi,
+                    params,
+                    return_type,
+                    ..
+                } = proto.as_ref();
+
+                let function_name = match abi {
+                    ast::Abi::CAbi(name) => name.clone(),
+                    _ => unreachable!(),
+                };
+
+                let (function_type, return_type) = Self::llvm_fn_sig(params, return_type);
+                let function_value =
+                    module.add_function(&function_name, function_type.as_function_type(), None);
+                function_value.set_call_conventions(LLVMCallConv::LLVMCCallConv as u32);
+                let function = Value::Function(function_value, return_type);
+
+                global_funcs.insert(*unit, function);
+
+                continue;
+            }
+
+            let const_eval::Value::Function(func) = value else {
                 panic!("Expected function value");
             };
             let FunctionDef {
@@ -103,24 +129,36 @@ impl LLVMBackend {
                 _ => Uuid::new_v4().to_string(),
             };
 
-            let mut param_types = Vec::new();
-            for param in params {
-                param_types.push(get_llvm_type(&param.param_type));
-            }
-
-            let return_type = return_type
-                .as_ref()
-                .map(|return_type| get_llvm_type(return_type))
-                .unwrap_or(TypeKind::new_unit());
-            let function_type = return_type.function(param_types);
-            let function =
+            let (function_type, return_type) = Self::llvm_fn_sig(params, return_type);
+            let function_value =
                 module.add_function(&function_name, function_type.as_function_type(), None);
-            function.set_call_conventions(0); // C
+            function_value.set_call_conventions(LLVMCallConv::LLVMCCallConv as u32);
+            let function = Value::Function(function_value, return_type);
 
-            global_funcs.insert(*unit, Value::Function(function, return_type));
+            let entry = global_funcs.entry(*unit);
+            entry.insert_entry(function);
         }
 
         (module, global_funcs)
+    }
+
+    #[inline(always)]
+    fn llvm_fn_sig(
+        params: &[Param],
+        return_type: &Option<Type>,
+    ) -> (TypeKind<'static>, TypeKind<'static>) {
+        let mut param_types = Vec::new();
+        for param in params {
+            param_types.push(get_llvm_type(&param.param_type));
+        }
+
+        let return_type = return_type
+            .as_ref()
+            .map(|return_type| get_llvm_type(return_type))
+            .unwrap_or(TypeKind::new_unit());
+        let function_type = return_type.function(param_types);
+
+        (function_type, return_type)
     }
 
     fn codegen_item(
@@ -131,7 +169,7 @@ impl LLVMBackend {
     ) {
         let const_eval::Value::Function(func) = ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap()
         else {
-            panic!("Expected function value");
+            return;
         };
         let FunctionDef { params, block, .. } = func.as_ref();
 

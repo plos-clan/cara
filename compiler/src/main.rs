@@ -59,13 +59,16 @@ fn main() -> anyhow::Result<()> {
             codegen_result.emit(emit_options);
 
             if matches!(emit, BuildResult::Executable) {
-                let mut child = Command::new("gcc")
-                    .arg("-o")
-                    .arg(output_file)
-                    .arg(temp_file.path())
-                    .spawn()?;
+                let mut child = Command::new("gcc");
+                child.arg("-o").arg(output_file).arg(temp_file.path());
 
-                child.wait()?;
+                if matches!(reloc_mode, RelocMode::Static) {
+                    child.arg("-static");
+                }
+
+                if !child.spawn()?.wait()?.success() {
+                    anyhow::bail!("Failed to link executable");
+                }
             }
         }
     }

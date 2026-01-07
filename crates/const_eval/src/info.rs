@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use ast::FunctionDef;
+use ast::{FunctionDef, ProtoDef};
 
 pub enum Value {
     Int((bool, u32), i64),
     Function(Arc<FunctionDef>),
+    Proto(Arc<ProtoDef>),
     Unit,
 }
 

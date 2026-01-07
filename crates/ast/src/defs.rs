@@ -28,6 +28,14 @@ pub enum Abi {
 }
 
 #[derive(Debug, Clone)]
+pub struct ProtoDef {
+    pub abi: Abi,
+    pub params: Vec<Param>,
+    pub return_type: Option<Type>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub struct FunctionDef {
     pub abi: Abi,
     pub params: Vec<Param>,
