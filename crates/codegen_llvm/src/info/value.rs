@@ -28,11 +28,9 @@ pub enum Value<'v> {
 }
 
 impl<'v> Value<'v> {
-    pub fn as_int(&self, builder: &Builder<'v>) -> IntValue<'v> {
-        let Value::Int(v) = self.as_right_value(builder) else {
-            unreachable!()
-        };
-        v
+    pub fn as_int(&self) -> IntValue<'v> {
+        let Value::Int(v) = self else { unreachable!() };
+        *v
     }
 
     pub fn as_fn(&self) -> FunctionValue<'v> {
@@ -77,6 +75,14 @@ impl<'v> Value<'v> {
 impl<'v> Value<'v> {
     pub fn is_unit(&self) -> bool {
         matches!(self, Self::Unit)
+    }
+
+    pub fn is_int(&self) -> bool {
+        matches!(self, Self::Int(_))
+    }
+
+    pub fn is_ptr(&self) -> bool {
+        matches!(self, Self::Pointer { .. })
     }
 }
 

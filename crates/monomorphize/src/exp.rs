@@ -1,5 +1,5 @@
 use ast::{Array, visitor::ExpVisitor};
-use const_eval::{Value, queries::CONST_EVAL_PROVIDER};
+use const_eval::{ValueKind, queries::CONST_EVAL_PROVIDER};
 
 use crate::MonomorphizeContext;
 
@@ -61,12 +61,12 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
         if !self.contains(&name) {
             let def_id = self.ctx.lookup_def_id(name).unwrap();
             let result = self.ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
-            if matches!(result, Value::Function(_) | Value::Proto(_)) {
+            if matches!(result.kind(), ValueKind::Function(_) | ValueKind::Proto(_)) {
                 self.required_items.push(def_id);
             }
         }
     }
-    
+
     fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) {
         self.visit_right_value(&type_cast.exp);
     }

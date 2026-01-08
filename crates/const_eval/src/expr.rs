@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use ast::{
-    Array, BinaryOp, Block, Call, Deref, FunctionDef, Index, Number, UnaryOp, Var,
-    visitor::ExpVisitor,
+    Array, BinaryOp, Block, Call, Deref, FunctionDef, Index, Number, Span, Type, TypeEnum, UnaryOp,
+    Var, visitor::ExpVisitor,
 };
 
 use crate::{ConstEvalContext, info::Value, queries::CONST_EVAL_PROVIDER};
@@ -20,11 +20,10 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
         unimplemented!()
     }
 
-    fn visit_binary(&mut self, op: &BinaryOp, lhs: Value, rhs: Value) -> Value {
-        let Value::Int(_, rhs) = rhs else {
-            unreachable!()
-        };
-        lhs.apply(|lhs| match op {
+    fn visit_binary(&mut self, op: &BinaryOp, lhs_val: Value, rhs_val: Value) -> Value {
+        let lhs = lhs_val.as_int();
+        let rhs = rhs_val.as_int();
+        let mut result = Value::new_int(match op {
             BinaryOp::Add => lhs + rhs,
             BinaryOp::Sub => lhs - rhs,
             BinaryOp::Mul => lhs * rhs,
@@ -40,7 +39,9 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
             BinaryOp::Gt => (lhs > rhs) as i64,
             BinaryOp::Eq => (lhs == rhs) as i64,
             BinaryOp::Ne => (lhs != rhs) as i64,
-        })
+        });
+        result.set_type(lhs_val.ty());
+        result
     }
 
     fn visit_block(&mut self, _block: &Block) -> Value {
@@ -56,11 +57,11 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_proto(&mut self, proto_def: &ast::ProtoDef) -> Value {
-        Value::Proto(Arc::new(proto_def.clone()))
+        Value::new_proto(Arc::new(proto_def.clone()))
     }
 
     fn visit_function(&mut self, func: &FunctionDef) -> Value {
-        Value::Function(Arc::new(func.clone()))
+        Value::new_function(Arc::new(func.clone()))
     }
 
     fn visit_index(&mut self, _index: &Index) -> Value {
@@ -74,7 +75,19 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_number(&mut self, number: &Number) -> Value {
-        Value::Int(number.ty.unwrap(), number.num as i64)
+        let mut value = Value::new_int(number.num as i64);
+        if let Some((signed, width)) = number.ty {
+            value.set_type(Arc::new(Type {
+                kind: if signed {
+                    TypeEnum::Signed(width)
+                } else {
+                    TypeEnum::Unsigned(width)
+                },
+                ref_count: 0,
+                span: Span::default(),
+            }));
+        }
+        value
     }
 
     fn visit_str(&mut self, _string: &str) -> Value {
@@ -82,17 +95,20 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_unary(&mut self, op: &UnaryOp, value: Value) -> Value {
-        value.apply(|value| match op {
-            UnaryOp::Neg => -value,
-            UnaryOp::Not => !value,
-            UnaryOp::Pos => value,
-        })
+        let int_value = value.as_int();
+        let mut result = Value::new_int(match op {
+            UnaryOp::Neg => -int_value,
+            UnaryOp::Not => !int_value,
+            UnaryOp::Pos => int_value,
+        });
+        result.set_type(value.ty());
+        result
     }
 
     fn visit_unit(&mut self) -> Value {
-        Value::Unit
+        Value::new_unit()
     }
-    
+
     fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) -> Value {
         self.visit_right_value(&type_cast.exp)
     }

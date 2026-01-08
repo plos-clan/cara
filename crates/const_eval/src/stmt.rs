@@ -4,9 +4,9 @@ use crate::{ConstEvalContext, Value};
 
 impl StatementVisitor<Value> for ConstEvalContext<'_> {
     fn visit_assign(&mut self, _assign: &ast::Assign) -> Value {
-        Value::Unit
+        Value::new_unit()
     }
-    
+
     fn visit_return(&mut self, _return_stmt: &ast::Return) -> Value {
         unimplemented!()
     }
@@ -22,7 +22,7 @@ impl StatementVisitor<Value> for ConstEvalContext<'_> {
     fn visit_loop(&mut self, _loop_: &ast::Loop) -> Value {
         unimplemented!()
     }
-    
+
     fn visit_while(&mut self, _while_: &ast::While) -> Value {
         unimplemented!()
     }

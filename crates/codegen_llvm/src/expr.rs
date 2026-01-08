@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
     info::{Symbol, TypeKind, Value},
+    types::get_llvm_type,
 };
 
 impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
@@ -98,7 +99,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
         let ptr = unsafe {
             self.builder
-                .build_gep(pointee_ty.clone(), ptr, &[index.as_int(&self.builder)], "")
+                .build_gep(pointee_ty.clone(), ptr, &[index.as_int()], "")
                 .unwrap()
         };
         Value::Alloca {
@@ -135,7 +136,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_unary(&mut self, op: &ast::UnaryOp, value: Value<'v>) -> Value<'v> {
-        let value = value.as_int(&self.builder);
+        let value = value.as_int();
         Value::Int(match op {
             ast::UnaryOp::Neg => self.builder.build_int_neg(value, "").unwrap(),
             ast::UnaryOp::Pos => value,
@@ -185,16 +186,12 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
             let value = self.queries.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
 
-            match value {
-                const_eval::Value::Function(_) | const_eval::Value::Proto(_) => {
+            match value.kind() {
+                const_eval::ValueKind::Function(_) | const_eval::ValueKind::Proto(_) => {
                     self.global_funcs.get(&def_id).unwrap().clone()
                 }
-                const_eval::Value::Int((signed, width), i) => Value::Int(
-                    LLVM_CONTEXT
-                        .custom_width_int_type(width)
-                        .const_int(i as u64, signed),
-                ),
-                const_eval::Value::Unit => Value::Unit,
+                const_eval::ValueKind::Int(i) => get_llvm_type(value.ty().as_ref()).const_int(i),
+                const_eval::ValueKind::Unit => Value::Unit,
             }
         }
     }
@@ -206,9 +203,39 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_function(&mut self, _func: &ast::FunctionDef) -> Value<'v> {
         unreachable!()
     }
-    
-    fn visit_type_cast(&mut self, _type_cast: &ast::TypeCast) -> Value<'v> {
-        unimplemented!()
+
+    fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) -> Value<'v> {
+        let value = self.visit_right_value(&type_cast.exp);
+        let target_ty = get_llvm_type(&type_cast.ty);
+
+        if value.is_int() && target_ty.is_int() {
+            Value::Int(
+                self.builder
+                    .build_int_cast(value.as_int(), target_ty.as_int_type(), "")
+                    .unwrap(),
+            )
+        } else if value.is_ptr() && target_ty.is_ptr() {
+            Value::Pointer {
+                value: value.get_pointer(),
+                ty: target_ty,
+            }
+        } else if value.is_ptr() && target_ty.is_int() {
+            Value::Int(
+                self.builder
+                    .build_ptr_to_int(value.get_pointer(), target_ty.as_int_type(), "")
+                    .unwrap(),
+            )
+        } else if value.is_int() && target_ty.is_ptr() {
+            Value::Pointer {
+                value: self
+                    .builder
+                    .build_int_to_ptr(value.as_int(), target_ty.as_ptr_type(), "")
+                    .unwrap(),
+                ty: target_ty,
+            }
+        } else {
+            unimplemented!()
+        }
     }
 
     fn visit_unit(&mut self) -> Value<'v> {

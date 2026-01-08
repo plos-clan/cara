@@ -30,8 +30,8 @@ use crate::{
 mod expr;
 mod info;
 mod program;
-mod types;
 mod stmt;
+mod types;
 
 struct LLVMContext(Context);
 
@@ -88,9 +88,9 @@ impl LLVMBackend {
         let module = LLVM_CONTEXT.create_module("main");
 
         for unit in codegen_units.iter() {
-            let value = ctx.query(&CONST_EVAL_PROVIDER, *unit).unwrap();
+            let value = ctx.query(&CONST_EVAL_PROVIDER, *unit).unwrap().kind();
 
-            if let const_eval::Value::Proto(proto) = value {
+            if let const_eval::ValueKind::Proto(proto) = value {
                 let ProtoDef {
                     abi,
                     params,
@@ -114,7 +114,7 @@ impl LLVMBackend {
                 continue;
             }
 
-            let const_eval::Value::Function(func) = value else {
+            let const_eval::ValueKind::Function(func) = value else {
                 panic!("Expected function value");
             };
             let FunctionDef {
@@ -167,7 +167,8 @@ impl LLVMBackend {
         global_funcs: Arc<FunctionMap>,
         module: Arc<Module<'static>>,
     ) {
-        let const_eval::Value::Function(func) = ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap()
+        let const_eval::ValueKind::Function(func) =
+            ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap().kind()
         else {
             return;
         };

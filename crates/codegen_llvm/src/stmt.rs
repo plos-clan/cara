@@ -1,7 +1,16 @@
-use ast::{Assign, visitor::{ExpVisitor, StatementVisitor}};
-use inkwell::{IntPredicate, values::{AnyValue, InstructionOpcode}};
+use ast::{
+    Assign,
+    visitor::{ExpVisitor, StatementVisitor},
+};
+use inkwell::{
+    IntPredicate,
+    values::{AnyValue, InstructionOpcode},
+};
 
-use crate::{LLVM_CONTEXT, VisitorCtx, info::{Symbol, TypeKind, Value}};
+use crate::{
+    LLVM_CONTEXT, VisitorCtx,
+    info::{Symbol, TypeKind, Value},
+};
 
 impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_assign(&mut self, assign: &Assign) -> Value<'v> {
@@ -36,9 +45,7 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_if_exp(&mut self, if_exp: &ast::IfExp) -> Value<'v> {
-        let condition = self
-            .visit_right_value(&if_exp.condition)
-            .as_int(&self.builder);
+        let condition = self.visit_right_value(&if_exp.condition).as_int();
         let condition = self
             .builder
             .build_bit_cast(condition, LLVM_CONTEXT.bool_type(), "")
@@ -126,8 +133,8 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
             .builder
             .build_int_compare(
                 IntPredicate::SLT,
-                alloca.as_right_value(&self.builder).as_int(&self.builder),
-                end.as_int(&self.builder),
+                alloca.as_right_value(&self.builder).as_int(),
+                end.as_int(),
                 "",
             )
             .unwrap();
@@ -171,7 +178,7 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
         self.builder.position_at_end(condition_block);
         let condition = self.visit_right_value(&while_.condition);
         self.builder
-            .build_conditional_branch(condition.as_int(&self.builder), loop_block, end_block)
+            .build_conditional_branch(condition.as_int(), loop_block, end_block)
             .unwrap();
 
         self.builder.position_at_end(loop_block);

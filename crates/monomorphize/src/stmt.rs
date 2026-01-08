@@ -7,13 +7,13 @@ impl StatementVisitor<()> for MonomorphizeContext<'_> {
         self.visit_left_value(&assign.lhs);
         self.visit_right_value(&assign.rhs);
     }
-    
+
     fn visit_return(&mut self, return_stmt: &ast::Return) {
         if let Some(value) = return_stmt.value.as_ref() {
             self.visit_right_value(value);
         }
     }
-    
+
     fn visit_for(&mut self, for_: &ast::For) {
         self.visit_right_value(&for_.start);
         self.visit_right_value(&for_.end);
@@ -34,7 +34,7 @@ impl StatementVisitor<()> for MonomorphizeContext<'_> {
         self.visit_right_value(&while_.condition);
         self.visit_block(&while_.body);
     }
-    
+
     fn visit_if_exp(&mut self, if_exp: &ast::IfExp) {
         self.visit_block(&if_exp.then_branch);
         if let Some(else_block) = if_exp.else_branch.as_ref() {

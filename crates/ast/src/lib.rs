@@ -9,7 +9,7 @@ mod program;
 mod types;
 pub mod visitor;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Span(usize, usize);
 
 impl Span {

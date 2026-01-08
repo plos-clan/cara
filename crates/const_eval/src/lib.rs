@@ -6,8 +6,8 @@ pub use info::*;
 
 mod expr;
 mod info;
-mod stmt;
 pub mod queries;
+mod stmt;
 
 struct ConstEvalContext<'c> {
     ctx: Arc<QueryContext<'c>>,

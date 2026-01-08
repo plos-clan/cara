@@ -63,6 +63,14 @@ impl<'t> TypeKind<'t> {
     pub fn is_unit(&self) -> bool {
         matches!(self, Self::Unit(_))
     }
+
+    pub fn is_int(&self) -> bool {
+        matches!(self, Self::Int(_))
+    }
+
+    pub fn is_ptr(&self) -> bool {
+        matches!(self, Self::Ptr { .. })
+    }
 }
 
 impl<'t> TypeKind<'t> {
@@ -90,6 +98,20 @@ impl<'t> TypeKind<'t> {
     pub fn as_array_type(&self) -> ArrayType<'t> {
         match self {
             TypeKind::Array { ty, element: _ } => *ty,
+            _ => panic!("Incorrect usage of type."),
+        }
+    }
+
+    pub fn as_int_type(&self) -> IntType<'t> {
+        match self {
+            TypeKind::Int(ty) => *ty,
+            _ => panic!("Incorrect usage of type."),
+        }
+    }
+
+    pub fn as_ptr_type(&self) -> PointerType<'t> {
+        match self {
+            TypeKind::Ptr { ty, pointee: _ } => *ty,
             _ => panic!("Incorrect usage of type."),
         }
     }

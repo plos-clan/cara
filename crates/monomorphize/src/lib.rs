@@ -4,8 +4,8 @@ use query::{DefId, QueryContext};
 
 mod block;
 mod exp;
-mod stmt;
 pub mod queries;
+mod stmt;
 
 struct MonomorphizeContext<'ctx> {
     ctx: Arc<QueryContext<'ctx>>,

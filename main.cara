@@ -1,25 +1,29 @@
-const fib_num = 10i64;
+const fib_num = 10 as i64;
 
 const printf = proto C[printf] fn(format: *i8, a: i64) -> i32;
+const scanf = proto C[scanf] fn(format: *i8, a: *i64) -> i32;
 
-const print_num = fn() {
-    printf("%d\n", fib_num);
+const print_num = fn(num: i64) {
+    printf("%d\n", num);
+};
+
+const scan_num = fn(num: *i64) {
+    scanf("%d", num);
 };
 
 const main = extern C[main] fn() -> i64 {
-    let mut return_value = 0;
-    for a in (0,11) {
-        return_value = a + return_value;
-    };
-    print_num(return_value);
+    let mut fib_num = 0 as i64;
+    scan_num(&fib_num);
+    let fib_result = fib(fib_num);
+    print_num(fib_result);
     
     0
 };
 
 const fib = fn(n: i64) -> i64 {
-    if n <= 1i64 {
+    if n <= 1 {
         n
     } else {
-        fib(n - 1i64) + fib(n - 2i64)
+        fib(n - 1) + fib(n - 2)
     }
 };

@@ -174,6 +174,11 @@ peg::parser! {
                 binary_op_rule!(l, r, RShift)
             }
             --
+            l: @ __ "as" __ t: type_() r: position!() {
+                let span = Span::new(l.span().start(), r);
+                Exp::TypeCast(Box::new(TypeCast { exp: l, ty: t, span }))
+            }
+            --
             d: deref() { Exp::Deref(Box::new(d)) }
             --
             l: (@) _ "[" _ r: expr() _ "]" {
