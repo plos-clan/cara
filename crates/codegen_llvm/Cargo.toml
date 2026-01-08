@@ -10,3 +10,4 @@ inkwell = { version = "0.7.0", features = ["llvm21-1"] }
 query.workspace = true
 uuid = { version = "1.19.0", features = ["v4"] }
 codegen.workspace = true
+symbol_table = { version = "0.1.0", path = "../symbol_table" }

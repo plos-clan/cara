@@ -6,4 +6,5 @@ edition.workspace = true
 [dependencies]
 annotate-snippets = "0.12.10"
 ast.workspace = true
+symbol_table = { version = "0.1.0", path = "../symbol_table" }
 thiserror = "2.0.17"

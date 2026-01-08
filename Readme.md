@@ -9,8 +9,8 @@ Currently in development.
 - [x] Query system driven compilation.
 - [x] LLVM backend.
 - [x] Type Casting.
-- [ ] Structs and tuples.
 - [ ] Powerful analyzer.
+- [ ] Structs and tuples.
 - [ ] Modules.
 - [ ] OOP.
 - [ ] Generics.

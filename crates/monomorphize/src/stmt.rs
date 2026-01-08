@@ -20,10 +20,8 @@ impl StatementVisitor<()> for MonomorphizeContext<'_> {
         if let Some(step) = &for_.step {
             self.visit_right_value(step);
         }
-        self.push_scope();
-        self.push_symbol(for_.var.clone());
+        self.locals.pre_push(for_.var.clone());
         self.visit_block(&for_.body);
-        self.pop_scope();
     }
 
     fn visit_loop(&mut self, loop_: &ast::Loop) {

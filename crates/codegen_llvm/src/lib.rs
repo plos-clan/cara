@@ -20,10 +20,11 @@ use inkwell::{
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
 };
 use query::{DefId, QueryContext};
+use symbol_table::SymbolTable;
 use uuid::Uuid;
 
 use crate::{
-    info::{Symbol, SymbolStack, TypeKind, Value},
+    info::{Symbol, TypeKind, Value},
     types::get_llvm_type,
 };
 
@@ -183,7 +184,7 @@ impl LLVMBackend {
 
         let mut ctx = VisitorCtx {
             builder,
-            symbols: SymbolStack::new(),
+            symbols: SymbolTable::new(),
             module,
             queries: ctx.clone(),
             current_fn: func_value,
@@ -319,7 +320,7 @@ impl CodegenResult for LLVMCodegenResult {
 
 struct VisitorCtx<'v> {
     builder: Builder<'v>,
-    symbols: SymbolStack<'v>,
+    symbols: SymbolTable<Symbol<'v>>,
     #[allow(unused)]
     module: Arc<Module<'static>>,
     queries: Arc<QueryContext<'v>>,

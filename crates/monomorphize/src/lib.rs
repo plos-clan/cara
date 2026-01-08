@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use query::{DefId, QueryContext};
+use symbol_table::SymbolTable;
 
 mod block;
 mod exp;
@@ -9,30 +10,6 @@ mod stmt;
 
 struct MonomorphizeContext<'ctx> {
     ctx: Arc<QueryContext<'ctx>>,
-    locals: Vec<Vec<String>>,
-    params: Vec<String>,
+    locals: SymbolTable<String>,
     required_items: Vec<DefId>,
-}
-
-impl MonomorphizeContext<'_> {
-    fn push_scope(&mut self) {
-        self.locals.push(Vec::new());
-    }
-
-    fn pop_scope(&mut self) {
-        self.locals.pop();
-    }
-
-    fn push_symbol(&mut self, name: String) {
-        self.locals.last_mut().unwrap().push(name);
-    }
-
-    fn contains(&self, name: &String) -> bool {
-        for scope in self.locals.iter().rev() {
-            if scope.contains(name) {
-                return true;
-            }
-        }
-        self.params.contains(name)
-    }
 }

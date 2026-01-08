@@ -6,6 +6,7 @@ use std::{
 use ast::visitor::ExpVisitor;
 use const_eval::{ValueKind, queries::CONST_EVAL_PROVIDER};
 use query::{DefId, Provider, QueryContext};
+use symbol_table::SymbolTable;
 
 use crate::MonomorphizeContext;
 
@@ -47,13 +48,12 @@ fn collect_required_items(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> Vec<DefI
 
     let mut visitor_ctx = MonomorphizeContext {
         ctx,
-        locals: Vec::new(),
-        params: Vec::new(),
+        locals: SymbolTable::new(),
         required_items: Vec::new(),
     };
 
     for param in &func_def.params {
-        visitor_ctx.params.push(param.name.clone());
+        visitor_ctx.locals.pre_push(param.name.clone());
     }
 
     visitor_ctx.visit_block(&func_def.block);

@@ -58,7 +58,7 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
 
     fn visit_var(&mut self, var: &ast::Var) {
         let name = var.path.path.join(".");
-        if !self.contains(&name) {
+        if !self.locals.contains(&name) {
             let def_id = self.ctx.lookup_def_id(name).unwrap();
             let result = self.ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
             if matches!(result.kind(), ValueKind::Function(_) | ValueKind::Proto(_)) {
