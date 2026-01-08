@@ -119,7 +119,7 @@ impl<'t> TypeKind<'t> {
     pub fn const_int(&self, value: i64) -> Value<'t> {
         match self {
             TypeKind::Int(ty) => {
-                let mut int = ty.const_int(value.abs() as u64, true);
+                let mut int = ty.const_int(value.unsigned_abs(), true);
                 if value.is_negative() {
                     int = int.const_neg();
                 }

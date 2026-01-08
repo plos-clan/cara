@@ -67,7 +67,7 @@ impl Value {
         }
     }
 
-    pub fn as_unit(&self) -> () {
+    pub fn as_unit(&self) {
         match &self.kind {
             ValueKind::Unit => (),
             _ => unreachable!(),
