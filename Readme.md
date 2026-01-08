@@ -8,7 +8,7 @@ Currently in development.
 - [x] Basic const evaluation.
 - [x] Query system driven compilation.
 - [x] LLVM backend.
-- [ ] Type Casting.
+- [x] Type Casting.
 - [ ] Structs and tuples.
 - [ ] Powerful analyzer.
 - [ ] Modules.
