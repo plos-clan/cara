@@ -1,4 +1,4 @@
-use ast::{Array, visitor::ExpVisitor};
+use ast::{Array, Span, visitor::ExpVisitor};
 use const_eval::{ValueKind, queries::CONST_EVAL_PROVIDER};
 
 use crate::MonomorphizeContext;
@@ -18,7 +18,7 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
         }
     }
 
-    fn visit_binary(&mut self, _op: &ast::BinaryOp, _lhs: (), _rhs: ()) {}
+    fn visit_binary(&mut self, _op: &ast::BinaryOp, _lhs: (), _rhs: (), _: &Span) {}
 
     fn visit_block(&mut self, block: &ast::Block) {
         <Self as ast::visitor::BlockVisitor<()>>::visit_block(self, block);
@@ -52,7 +52,7 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
 
     fn visit_str(&mut self, _string: &str) {}
 
-    fn visit_unary(&mut self, _op: &ast::UnaryOp, _value: ()) {}
+    fn visit_unary(&mut self, _op: &ast::UnaryOp, _value: (), _: &Span) {}
 
     fn visit_unit(&mut self) {}
 
@@ -60,7 +60,7 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
         let name = var.path.path.join(".");
         if !self.locals.contains(&name) {
             let def_id = self.ctx.lookup_def_id(name).unwrap();
-            let result = self.ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
+            let result = self.ctx.query_cached(&CONST_EVAL_PROVIDER, def_id).unwrap();
             if matches!(result.kind(), ValueKind::Function(_) | ValueKind::Proto(_)) {
                 self.required_items.push(def_id);
             }

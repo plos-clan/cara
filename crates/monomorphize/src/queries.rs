@@ -40,8 +40,9 @@ fn collect_codegen_units(ctx: Arc<QueryContext<'_>>, (): ()) -> Vec<DefId> {
 }
 
 fn collect_required_items(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> Vec<DefId> {
-    let Some(ValueKind::Function(func_def)) =
-        ctx.query(&CONST_EVAL_PROVIDER, def_id).map(|v| v.kind())
+    let Some(ValueKind::Function(func_def)) = ctx
+        .query_cached(&CONST_EVAL_PROVIDER, def_id)
+        .map(|v| v.kind())
     else {
         return Vec::new();
     };

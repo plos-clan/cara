@@ -89,7 +89,10 @@ impl LLVMBackend {
         let module = LLVM_CONTEXT.create_module("main");
 
         for unit in codegen_units.iter() {
-            let value = ctx.query(&CONST_EVAL_PROVIDER, *unit).unwrap().kind();
+            let value = ctx
+                .query_cached(&CONST_EVAL_PROVIDER, *unit)
+                .unwrap()
+                .kind();
 
             if let const_eval::ValueKind::Proto(proto) = value {
                 let ProtoDef {
@@ -168,8 +171,10 @@ impl LLVMBackend {
         global_funcs: Arc<FunctionMap>,
         module: Arc<Module<'static>>,
     ) {
-        let const_eval::ValueKind::Function(func) =
-            ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap().kind()
+        let const_eval::ValueKind::Function(func) = ctx
+            .query_cached(&CONST_EVAL_PROVIDER, def_id)
+            .unwrap()
+            .kind()
         else {
             return;
         };
@@ -321,7 +326,6 @@ impl CodegenResult for LLVMCodegenResult {
 struct VisitorCtx<'v> {
     builder: Builder<'v>,
     symbols: SymbolTable<Symbol<'v>>,
-    #[allow(unused)]
     module: Arc<Module<'static>>,
     queries: Arc<QueryContext<'v>>,
     current_fn: Value<'v>,

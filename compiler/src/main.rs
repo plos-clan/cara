@@ -1,5 +1,11 @@
-use std::{cell::LazyCell, fs::File, io::Read, process::Command};
+use std::{
+    cell::LazyCell,
+    fs::File,
+    io::Read,
+    process::{Command, exit},
+};
 
+use analyzer::queries::CHECK_CONST_DEF;
 use codegen::{BackendOptions, CodegenBackendBase, EmitOptions, OutputType, codegen};
 use codegen_llvm::LLVMBackend;
 use query::QueryContext;
@@ -47,10 +53,18 @@ fn main() -> anyhow::Result<()> {
                 .build();
 
             let mut source_code = String::new();
-            File::open(input_file)?.read_to_string(&mut source_code)?;
+            File::open(&input_file)?.read_to_string(&mut source_code)?;
 
             let ast = parser::parse(&source_code)?;
             let query_ctx = QueryContext::new(&ast);
+
+            let main_fn = query_ctx.lookup_def_id("main").unwrap();
+            let mut result = query_ctx.query(&CHECK_CONST_DEF, main_fn).unwrap();
+            result.dump(query_ctx.clone(), &source_code, &input_file);
+
+            if result.has_error() {
+                exit(-1);
+            }
 
             let codegen_result = codegen(query_ctx, &LLVMBackend::new(backend_options));
             if release {

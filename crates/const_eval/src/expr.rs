@@ -20,7 +20,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
         unimplemented!()
     }
 
-    fn visit_binary(&mut self, op: &BinaryOp, lhs_val: Value, rhs_val: Value) -> Value {
+    fn visit_binary(&mut self, op: &BinaryOp, lhs_val: Value, rhs_val: Value, _: &Span) -> Value {
         let lhs = lhs_val.as_int();
         let rhs = rhs_val.as_int();
         let mut result = Value::new_int(match op {
@@ -71,7 +71,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     fn visit_var(&mut self, var: &Var) -> Value {
         let name = var.path.path.join(".");
         let def_id = self.ctx.lookup_def_id(name).unwrap();
-        self.ctx.query(&CONST_EVAL_PROVIDER, def_id).unwrap()
+        self.ctx.query_cached(&CONST_EVAL_PROVIDER, def_id).unwrap()
     }
 
     fn visit_number(&mut self, number: &Number) -> Value {
@@ -94,7 +94,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
         unimplemented!()
     }
 
-    fn visit_unary(&mut self, op: &UnaryOp, value: Value) -> Value {
+    fn visit_unary(&mut self, op: &UnaryOp, value: Value, _: &Span) -> Value {
         let int_value = value.as_int();
         let mut result = Value::new_int(match op {
             UnaryOp::Neg => -int_value,

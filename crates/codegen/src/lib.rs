@@ -68,7 +68,7 @@ pub trait CodegenBackend {
 }
 
 pub fn codegen(ctx: Arc<QueryContext<'_>>, backend: &dyn CodegenBackend) -> Box<dyn CodegenResult> {
-    let codegen_units = ctx.query(&COLLECT_CODEGEN_UNITS, ()).unwrap();
+    let codegen_units = ctx.query_cached(&COLLECT_CODEGEN_UNITS, ()).unwrap();
 
     backend.codegen(ctx, codegen_units)
 }

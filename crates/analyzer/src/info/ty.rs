@@ -1,29 +1,73 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
-    Signed(u8),
-    Unsigned(u8),
+    Signed(u32),
+    Unsigned(u32),
 
+    #[default]
+    Unit,
     Bool,
 
-    Ptr(Box<Type>),
+    Ptr(Box<Self>),
+    Array(Box<Self>, u32),
+    Function(Box<Self>, Vec<Self>),
+}
+
+impl Type {
+    pub fn is_int(&self) -> bool {
+        matches!(self, Self::Signed(_)) || matches!(self, Self::Unsigned(_))
+    }
+
+    pub fn is_bool(&self) -> bool {
+        matches!(self, Self::Bool)
+    }
+
+    pub fn is_unit(&self) -> bool {
+        matches!(self, Self::Unit)
+    }
+
+    pub fn is_ptr(&self) -> bool {
+        matches!(self, Self::Ptr(_))
+    }
+
+    pub fn is_array(&self) -> bool {
+        matches!(self, Self::Array(_, _))
+    }
+
+    pub fn is_function(&self) -> bool {
+        matches!(self, Self::Function(_, _))
+    }
 }
 
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Signed(bits) => write!(f, "i{}", bits),
-            Type::Unsigned(bits) => write!(f, "u{}", bits),
-            Type::Bool => write!(f, "bool"),
+            Self::Signed(bits) => write!(f, "i{}", bits),
+            Self::Unsigned(bits) => write!(f, "u{}", bits),
+            Self::Bool => write!(f, "bool"),
+            Self::Unit => write!(f, "()"),
 
-            Type::Ptr(ty) => write!(f, "*{}", ty),
+            Self::Ptr(ty) => write!(f, "*{}", ty),
+            Self::Array(ty, len) => write!(f, "[{}; {}]", ty, len),
+            Self::Function(ret_ty, param_types) => {
+                write!(f, "fn(")?;
+                for ty in param_types {
+                    write!(f, "{}, ", ty)?;
+                }
+                write!(f, ") -> ")?;
+                write!(f, "{}", ret_ty)
+            }
         }
     }
 }
 
 impl Type {
-    pub fn pointer(&self) -> Type {
-        Type::Ptr(Box::new(self.clone()))
+    pub fn pointer(&self) -> Self {
+        Self::Ptr(Box::new(self.clone()))
+    }
+
+    pub fn array(&self, len: u32) -> Self {
+        Self::Array(Box::new(self.clone()), len)
     }
 }

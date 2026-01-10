@@ -10,6 +10,7 @@ pub enum ValueKind {
     Unit,
 }
 
+#[derive(Clone)]
 pub struct Value {
     kind: ValueKind,
     ty: Option<Arc<Type>>,

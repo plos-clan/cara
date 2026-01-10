@@ -20,26 +20,23 @@ pub trait ExpVisitor<V>: StatementVisitor<V> {
     fn visit_left_value(&mut self, exp: &Exp) -> V {
         match exp {
             Exp::Array(array) => self.visit_array(array),
-            Exp::Binary(op, lhs, rhs, _) => {
+            Exp::Binary(op, lhs, rhs, span) => {
                 let lhs = self.visit_right_value(lhs);
                 let rhs = self.visit_right_value(rhs);
-                self.visit_binary(op, lhs, rhs)
+                self.visit_binary(op, lhs, rhs, span)
             }
             Exp::Block(block) => self.visit_block(block),
             Exp::Call(call) => self.visit_call(call),
             Exp::Deref(deref) => self.visit_deref(deref),
             Exp::Exp(exp, _) => self.visit_left_value(exp),
-            Exp::GetAddr(get_addr) => {
-                let exp = self.visit_left_value(&get_addr.exp);
-                self.pass_left_value_as_right_value(exp)
-            }
+            Exp::GetAddr(get_addr) => self.visit_get_addr(get_addr),
             Exp::Index(index) => self.visit_index(index),
             Exp::Var(var) => self.visit_var(var),
             Exp::Number(number) => self.visit_number(number),
             Exp::Str(string, _) => self.visit_str(string),
-            Exp::Unary(op, value, _) => {
+            Exp::Unary(op, value, span) => {
                 let value = self.visit_right_value(value);
-                self.visit_unary(op, value)
+                self.visit_unary(op, value, span)
             }
             Exp::ProtoDef(proto_def) => self.visit_proto(proto_def),
             Exp::Function(func) => self.visit_function(func),
@@ -59,9 +56,14 @@ pub trait ExpVisitor<V>: StatementVisitor<V> {
         self.get_right_value(left_value)
     }
 
+    fn visit_get_addr(&mut self, get_addr: &GetAddr) -> V {
+        let exp = self.visit_left_value(&get_addr.exp);
+        self.pass_left_value_as_right_value(exp)
+    }
+
     fn visit_array(&mut self, array: &Array) -> V;
-    fn visit_binary(&mut self, op: &BinaryOp, lhs: V, rhs: V) -> V;
-    fn visit_unary(&mut self, op: &UnaryOp, value: V) -> V;
+    fn visit_binary(&mut self, op: &BinaryOp, lhs: V, rhs: V, span: &Span) -> V;
+    fn visit_unary(&mut self, op: &UnaryOp, value: V, span: &Span) -> V;
     fn visit_call(&mut self, call: &Call) -> V;
     fn visit_deref(&mut self, deref: &Deref) -> V;
     fn visit_index(&mut self, index: &Index) -> V;

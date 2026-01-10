@@ -1,6 +1,6 @@
 use crate::{Error, Type};
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Value {
     type_: Type,
 }
@@ -12,6 +12,10 @@ impl Value {
 
     pub fn type_(&self) -> &Type {
         &self.type_
+    }
+
+    pub fn into_type(self) -> Type {
+        self.type_
     }
 }
 

@@ -24,6 +24,12 @@ impl<S: Symbol> SymbolTable<S> {
     }
 }
 
+impl<S: Symbol> Default for SymbolTable<S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<S: Symbol> SymbolTable<S> {
     pub fn pre_push(&mut self, symbol: S) {
         self.cache.push(symbol);

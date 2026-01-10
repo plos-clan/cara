@@ -16,8 +16,7 @@ const main = extern C[main] fn() -> i64 {
     scan_num(&fib_num);
     let fib_result = fib(fib_num);
     print_num(fib_result);
-    
-    0
+    return 0;
 };
 
 const fib = fn(n: i64) -> i64 {

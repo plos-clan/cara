@@ -1,14 +1,20 @@
 use crate::Value;
 
 pub enum Symbol {
-    Const(String, Value),
     Var(String, bool, Value),
 }
 
+impl symbol_table::Symbol for Symbol {
+    type Key = String;
+
+    fn key(&self) -> &Self::Key {
+        self.name()
+    }
+}
+
 impl Symbol {
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &String {
         match self {
-            Symbol::Const(name, _) => name,
             Symbol::Var(name, _, _) => name,
         }
     }

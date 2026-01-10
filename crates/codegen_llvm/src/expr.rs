@@ -5,7 +5,7 @@ use inkwell::{
     values::{AnyValue, BasicValue, InstructionOpcode},
 };
 
-use ast::{Array, BinaryOp, Call, Var, visitor::ExpVisitor};
+use ast::{Array, BinaryOp, Call, Span, Var, visitor::ExpVisitor};
 use uuid::Uuid;
 
 use crate::{
@@ -28,7 +28,13 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         }
     }
 
-    fn visit_binary(&mut self, op: &BinaryOp, lhs_: Value<'v>, rhs_: Value<'v>) -> Value<'v> {
+    fn visit_binary(
+        &mut self,
+        op: &BinaryOp,
+        lhs_: Value<'v>,
+        rhs_: Value<'v>,
+        _: &Span,
+    ) -> Value<'v> {
         let lhs = lhs_.as_basic_value_enum();
         let rhs = rhs_.as_basic_value_enum();
 
@@ -135,7 +141,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         }
     }
 
-    fn visit_unary(&mut self, op: &ast::UnaryOp, value: Value<'v>) -> Value<'v> {
+    fn visit_unary(&mut self, op: &ast::UnaryOp, value: Value<'v>, _: &Span) -> Value<'v> {
         let value = value.as_int();
         Value::Int(match op {
             ast::UnaryOp::Neg => self.builder.build_int_neg(value, "").unwrap(),
@@ -184,7 +190,10 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         } else {
             let def_id = self.queries.lookup_def_id(&name).unwrap();
 
-            let value = self.queries.query(&CONST_EVAL_PROVIDER, def_id).unwrap();
+            let value = self
+                .queries
+                .query_cached(&CONST_EVAL_PROVIDER, def_id)
+                .unwrap();
 
             match value.kind() {
                 const_eval::ValueKind::Function(_) | const_eval::ValueKind::Proto(_) => {
