@@ -15,11 +15,11 @@ impl BlockVisitor<Value> for AnalyzerContext<'_> {
 
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
         let value = self.visit_right_value(&var_def.initial_value);
-        if let Some(should_be_type) = var_def.var_type.as_ref().map(|ty| get_analyzer_type(ty))
+        if let Some(should_be_type) = var_def.var_type.as_ref().map(get_analyzer_type)
             && should_be_type != *value.type_()
         {
             self.error_at(
-                Error::TypeMismatch(should_be_type, value.type_().clone()),
+                Error::TypeMismatch(should_be_type, value.clone().into_type()),
                 var_def.initial_value.span(),
             );
         }

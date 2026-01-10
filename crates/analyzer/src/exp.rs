@@ -43,8 +43,8 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
                     if *type_ != should_be_type {
                         self.error_at(
                             Error::TypeMismatch(
-                                should_be_type.type_().clone(),
-                                type_.type_().clone(),
+                                should_be_type.clone().into_type(),
+                                type_.clone().into_type(),
                             ),
                             *span,
                         );
@@ -100,7 +100,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
 
             Value::new(ret_ty.deref().clone())
         } else {
-            self.error_at(Error::WrongCall(func.type_().clone()), call.span);
+            self.error_at(Error::WrongCall(func.into_type()), call.span);
             Value::new(Type::Unit)
         }
     }
@@ -126,7 +126,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
 
         if !matches!(index_value.type_(), Type::Signed(_) | Type::Unsigned(_)) {
             self.error_at(
-                Error::TypeMismatch(Type::Unsigned(64), index_value.type_().clone()),
+                Error::TypeMismatch(Type::Unsigned(64), index_value.into_type()),
                 index.index.span(),
             );
         }
@@ -135,7 +135,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
             Type::Array(target, _) => Value::new(target.deref().clone()),
             Type::Ptr(target) => Value::new(target.deref().clone()),
             _ => {
-                self.error_at(Error::WrongDeref(array.type_().clone()), index.exp.span());
+                self.error_at(Error::WrongDeref(array.into_type()), index.exp.span());
                 Value::new(Type::Unit)
             }
         }
@@ -171,25 +171,23 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
             return value;
         }
 
-        if value_type.is_int() && target.is_int() {
-            Value::new(target)
-        } else if value_type.is_bool() && target.is_int() {
-            Value::new(target)
-        } else if value_type.is_ptr() && target.is_ptr() {
-            Value::new(target)
-        } else if value_type.is_ptr() && target.is_int() {
-            Value::new(target)
-        } else if value_type.is_int() && target.is_ptr() {
-            Value::new(target)
-        } else if value_type.is_function() && target.is_ptr() {
-            Value::new(target)
-        } else {
+        if !matches!(
+            (value_type, &target),
+            (
+                Type::Signed(_) | Type::Unsigned(_),
+                Type::Signed(_) | Type::Unsigned(_)
+            ) | (Type::Bool, Type::Signed(_) | Type::Unsigned(_))
+                | (Type::Signed(_) | Type::Unsigned(_), Type::Ptr(_))
+                | (Type::Ptr(_), Type::Signed(_) | Type::Unsigned(_))
+                | (Type::Ptr(_), Type::Ptr(_))
+                | (Type::Function(_, _), Type::Ptr(_))
+        ) {
             self.error_at(
                 Error::InvalidTypeCast(value_type.clone(), target.clone()),
                 *span,
             );
-            Value::new(target)
         }
+        Value::new(target)
     }
 
     fn visit_unary(&mut self, op: &UnaryOp, value: Value, span: &Span) -> Value {

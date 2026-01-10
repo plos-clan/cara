@@ -9,11 +9,11 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
     fn visit_assign(&mut self, assign: &Assign) -> Value {
         let Assign { lhs, rhs, .. } = assign;
 
-        let lhs_val = self.visit_left_value(&lhs);
-        let lhs_type = lhs_val.type_().clone();
+        let lhs_val = self.visit_left_value(lhs);
+        let lhs_type = lhs_val.into_type();
 
-        let rhs_val = self.visit_right_value(&rhs);
-        let rhs_type = rhs_val.type_().clone();
+        let rhs_val = self.visit_right_value(rhs);
+        let rhs_type = rhs_val.into_type();
 
         if lhs_type != rhs_type {
             self.error_at(Error::TypeMismatch(lhs_type, rhs_type), rhs.span());
@@ -32,9 +32,9 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
         } = for_;
 
         let start_val = self.visit_right_value(start);
-        let start_type = start_val.type_().clone();
+        let start_type = start_val.clone().into_type();
         let end_val = self.visit_right_value(end);
-        let end_type = end_val.type_().clone();
+        let end_type = end_val.into_type();
 
         if start_type != end_type {
             self.error_at(
@@ -44,9 +44,10 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
         }
 
         if let Some(step_val) = step.as_ref().map(|s| self.visit_right_value(s)) {
-            if *step_val.type_() != start_type {
+            let step_type = step_val.into_type();
+            if step_type != start_type {
                 self.error_at(
-                    Error::TypeMismatch(start_type, start_val.type_().clone()),
+                    Error::TypeMismatch(start_type, step_type),
                     step.as_ref().unwrap().span(),
                 );
             }
@@ -87,7 +88,7 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
         let else_branch_ty = if let Some(else_branch) = else_branch {
             self.visit_block(else_branch).into_type()
         } else if let Some(else_if) = else_if {
-            self.visit_if_exp(&else_if).into_type()
+            self.visit_if_exp(else_if).into_type()
         } else {
             Type::Unit
         };

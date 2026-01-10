@@ -63,7 +63,7 @@ fn try_infer(exp: &Exp) -> Option<Type> {
             let ret_ty = proto
                 .return_type
                 .as_ref()
-                .map(|r| get_analyzer_type(r))
+                .map(get_analyzer_type)
                 .unwrap_or(Type::Unit);
             let param_types = proto
                 .params
@@ -76,7 +76,7 @@ fn try_infer(exp: &Exp) -> Option<Type> {
             let ret_ty = func
                 .return_type
                 .as_ref()
-                .map(|r| get_analyzer_type(r))
+                .map(get_analyzer_type)
                 .unwrap_or(Type::Unit);
             let param_types = func
                 .params

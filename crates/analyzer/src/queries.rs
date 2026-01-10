@@ -62,7 +62,7 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
                     let ret_ty = proto
                         .return_type
                         .as_ref()
-                        .map(|r| get_analyzer_type(r))
+                        .map(get_analyzer_type)
                         .unwrap_or(Type::Unit);
                     let param_types = proto
                         .params
@@ -75,7 +75,7 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
                     let ret_ty = func
                         .return_type
                         .as_ref()
-                        .map(|r| get_analyzer_type(r))
+                        .map(get_analyzer_type)
                         .unwrap_or(Type::Unit);
                     analyzer_ctx.ret_ty = Some(ret_ty.clone());
                     let mut param_types = Vec::new();
@@ -102,7 +102,7 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
                     }
                     Type::Function(Box::new(ret_ty), param_types)
                 }
-                _ => analyzer_ctx.visit_right_value(&exp).into_type(),
+                _ => analyzer_ctx.visit_right_value(exp).into_type(),
             };
             Value::new(ty)
         }
