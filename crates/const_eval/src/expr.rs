@@ -5,7 +5,7 @@ use ast::{
     Var, visitor::ExpVisitor,
 };
 
-use crate::{ConstEvalContext, ValueKind, info::Value, queries::CONST_EVAL_PROVIDER};
+use crate::{ConstEvalContext, TypeKind, ValueKind, info::Value, queries::CONST_EVAL_PROVIDER};
 
 impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     fn get_right_value(&self, left_value: Value) -> Value {
@@ -77,15 +77,14 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     fn visit_number(&mut self, number: &Number) -> Value {
         let mut value = Value::new_int(number.num as i64);
         if let Some((signed, width)) = number.ty {
-            value.set_type(Arc::new(Type {
+            value.set_type(TypeKind::new(Arc::new(Type {
                 kind: if signed {
                     TypeEnum::Signed(width)
                 } else {
                     TypeEnum::Unsigned(width)
                 },
-                ref_count: 0,
                 span: Span::default(),
-            }));
+            })));
         }
         value
     }
@@ -95,11 +94,15 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_unary(&mut self, op: &UnaryOp, value: Value, _: &Span) -> Value {
+        if op == &UnaryOp::Ptr {
+            return Value::new_type(value.as_type().new_ptr());
+        }
         let int_value = value.as_int();
         let mut result = Value::new_int(match op {
             UnaryOp::Neg => -int_value,
             UnaryOp::Not => !int_value,
             UnaryOp::Pos => int_value,
+            _ => unreachable!(),
         });
         result.set_type(value.ty());
         result
@@ -120,7 +123,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
             fields.insert(field.0.clone(), value);
         }
 
-        let ValueKind::Type(ty) = self.visit_type(&structure.ty).kind() else {
+        let ValueKind::Type(ty) = self.visit_right_value(&structure.ty).kind() else {
             unreachable!()
         };
 
@@ -139,5 +142,9 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
             unreachable!()
         };
         value.clone()
+    }
+
+    fn visit_type(&mut self, type_: &Type) -> Value {
+        Value::new_type(TypeKind::new(Arc::new(type_.clone())))
     }
 }

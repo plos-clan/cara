@@ -72,7 +72,7 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
     }
 
     fn visit_structure(&mut self, structure: &ast::Structure) {
-        self.visit_type(&structure.ty);
+        self.visit_right_value(&structure.ty);
         for (_, value) in structure.fields.iter() {
             self.visit_right_value(value);
         }
@@ -81,14 +81,12 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
     fn visit_field_access(&mut self, field_access: &ast::FieldAccess) {
         self.visit_right_value(&field_access.lhs);
     }
-}
 
-impl MonomorphizeContext<'_> {
-    pub(crate) fn visit_type(&mut self, type_: &ast::Type) {
+    fn visit_type(&mut self, type_: &ast::Type) {
         match &type_.kind {
-            TypeEnum::Structure(struct_ty) => {
+            TypeEnum::Structure(struct_ty, _) => {
                 for (_, ty) in struct_ty.iter() {
-                    self.visit_type(ty);
+                    self.visit_right_value(ty);
                 }
             }
             _ => {}

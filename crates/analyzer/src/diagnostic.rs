@@ -22,6 +22,8 @@ pub enum Error {
     TypeMismatch(Type, Type),
     #[error("Unsupported operator {0} for type {1}")]
     UnsupportedOperator(String, Type),
+    #[error("Unknown variable or const {0}")]
+    Unknown(String),
     #[error("{0}")]
     Custom(String),
 }

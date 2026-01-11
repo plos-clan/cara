@@ -31,6 +31,7 @@ impl Array {
 #[derive(Debug, Clone)]
 pub enum Exp {
     Exp(Box<Exp>, Span),
+    Type(Type),
     Number(Number),
     Var(Box<Var>),
     Str(String, Span),
@@ -60,6 +61,7 @@ impl Exp {
     pub fn span(&self) -> Span {
         match self {
             Self::Exp(_, span) => *span,
+            Self::Type(type_) => type_.span,
             Self::Number(number) => number.span,
             Self::Var(var) => var.span,
             Self::Unary(_, _, span) => *span,
@@ -90,7 +92,7 @@ impl Exp {
 #[derive(Debug, Clone)]
 pub struct TypeCast {
     pub exp: Exp,
-    pub ty: Type,
+    pub ty: Exp,
     pub span: Span,
 }
 
@@ -186,7 +188,7 @@ pub struct For {
 
 #[derive(Debug, Clone)]
 pub struct Structure {
-    pub ty: Box<Type>,
+    pub ty: Box<Exp>,
     pub fields: HashMap<String, Exp>,
     pub span: Span,
 }
@@ -198,11 +200,12 @@ pub struct FieldAccess {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
     Pos,
     Neg,
     Not,
+    Ptr,
 }
 
 #[derive(Debug, Clone, Copy)]

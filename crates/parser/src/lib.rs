@@ -32,12 +32,12 @@ peg::parser! {
         }
 
         rule proto_def() -> ProtoDef
-        = l: position!() "proto" __ abi: abi_kind() _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: type_() {t})? _ r: position!() {
+        = l: position!() "proto" __ abi: abi_kind() _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: expr() {t})? _ r: position!() {
             ProtoDef { abi: abi, params, return_type, span: Span::new(l, r) }
         }
 
         rule function_def() -> FunctionDef
-        = l: position!() abi: ("extern" __ a: abi_kind() {a})? _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: type_() {t})? _ block: block() _ r: position!() {
+        = l: position!() abi: ("extern" __ a: abi_kind() {a})? _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: expr() {t})? _ block: block() _ r: position!() {
             FunctionDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, block, span: Span::new(l, r) }
         }
 
@@ -49,8 +49,6 @@ peg::parser! {
         rule const_initial_value() -> ConstInitialValue
         = e: expr() {
             ConstInitialValue::Exp(ConstExp { exp: e })
-        } / t: type_() {
-            ConstInitialValue::Type(t)
         }
 
         rule block() -> Block
@@ -67,7 +65,7 @@ peg::parser! {
 
         rule var_def() -> VarDef
         = l: position!() _ "let" __ mutable: ("mut"?) _ name: identifier() _
-                var_type: (":" _ t: type_() {t} )? _
+                var_type: (":" _ t: expr() {t} )? _
                 "=" _ value: expr() _ ";" r: position!() {
             VarDef { name, var_type, initial_value: value, mutable: mutable.is_some(), span: Span::new(l, r) }
         }
@@ -90,7 +88,7 @@ peg::parser! {
         }
 
         rule param() -> Param
-        = l: position!() name: identifier() _ ":" _ ty: type_() r: position!() {
+        = l: position!() name: identifier() _ ":" _ ty: expr() r: position!() {
             Param { name, param_type: ty, span: Span::new(l, r) }
         }
 
@@ -166,6 +164,10 @@ peg::parser! {
                     let span = Span::new(s, r.span().end());
                     Exp::Unary(UnaryOp::Not, Box::new(r), span)
                 }
+                s: position!() "*" _ r: (@) {
+                    let span = Span::new(s, r.span().end());
+                    Exp::Unary(UnaryOp::Ptr, Box::new(r), span)
+                }
                 --
                 l: (@) _ "<<" _ r: @ {
                     binary_op_rule!(l, r, LShift)
@@ -174,12 +176,10 @@ peg::parser! {
                     binary_op_rule!(l, r, RShift)
                 }
                 --
-                l: (@) __ "as" __ t: type_() {
-                    let span = Span::new(l.span().start(), t.span.end());
+                l: (@) __ "as" __ t: @ {
+                    let span = Span::new(l.span().start(), t.span().end());
                     Exp::TypeCast(Box::new(TypeCast { exp: l, ty: t, span }))
                 }
-                --
-                d: deref() { Exp::Deref(Box::new(d)) }
                 --
                 l: (@) _ "[" _ r: expr() _ "]" {
                     let span = Span::new(l.span().start(), r.span().end());
@@ -195,10 +195,10 @@ peg::parser! {
                     Exp::GetAddr(Box::new(GetAddr { exp: e, span }))
                 }
                 --
-                "[" _ t: type_() _ "]" _ "{" _
+                t: @ _ "{" _
                     fields: ((name: identifier() _ ":" _ value: expr() {(name, value)}) ** ("," _)) ","?
                 _ "}" r: position!() {
-                    let span = Span::new(t.span.start(), r);
+                    let span = Span::new(t.span().start(), r);
                     Exp::Structure(Box::new(Structure {
                         ty: Box::new(t),
                         fields: fields.into_iter().collect(),
@@ -206,6 +206,13 @@ peg::parser! {
                     }))
                 }
                 --
+                l: @ "." "*" r: position!() {
+                    let span = Span::new(l.span().start(), r);
+                    Exp::Deref(Box::new(Deref {
+                        exp: l,
+                        span
+                    }))
+                }
                 l: @ "." n: identifier() r: position!() {
                     let span = Span::new(l.span().start(), r);
                     Exp::FieldAccess(Box::new(FieldAccess {
@@ -224,6 +231,7 @@ peg::parser! {
                     }))
                 }
                 --
+                t: type_() { Exp::Type(t) }
                 f: for_exp() { Exp::For(Box::new(f)) }
                 l: loop_exp() { Exp::Loop(Box::new(l)) }
                 w: while_exp() { Exp::While(Box::new(w)) }
@@ -299,14 +307,6 @@ peg::parser! {
                 }
             }
 
-        rule deref() -> Deref
-              = l: position!() "*" _ e: expr() r: position!() {
-            Deref {
-                exp: e,
-                span: Span::new(l, r)
-            }
-        }
-
         rule string_wrapper() -> Exp
              = s: position!() string: string() e: position!() {
             Exp::Str(string, Span::new(s, e))
@@ -328,15 +328,7 @@ peg::parser! {
             }
 
         rule path() -> Path
-            = s: position!() i:identifier() e: position!() {
-                Path{
-                    path: vec![i],
-                    span: Span::new(s, e)
-                }
-            }
-            / s: position!() i:identifier() _ "::" _ p: path() e: position!() {
-                let mut path = vec![i];
-                path.extend(p.path);
+            = s: position!() path:(identifier() ++ "::") e: position!() {
                 Path{
                     path,
                     span: Span::new(s, e)
@@ -350,20 +342,20 @@ peg::parser! {
             } / "u" n:$(['0'..='9']+) {
                 let width = n.parse().unwrap();
                 TypeEnum::Unsigned(width)
-            } / n: var() {
-                TypeEnum::Custom(n)
             } / "(" _ ")" {
                 TypeEnum::Unit
-            } / "[" _ inner: type_() _ ";" _ len: width() _ "]" {
+            } / "[" _ inner: expr() _ ";" _ len: width() _ "]" {
                 TypeEnum::Array(Box::new(inner), len)
-            } / "struct" _ "{" _ fields: (name: identifier() _ ":" _ ty: type_() { (name, ty) }) ** ("," _) ","? _ "}" {
-                TypeEnum::Structure(fields.into_iter().collect())
+            } / "struct" _ "{"
+                _ fields: (name: identifier() _ ":" _ ty: expr() { (name, ty) }) ** ("," _) ","? _
+                items: (global_item() ** _) _
+             "}" {
+                TypeEnum::Structure(fields.into_iter().collect(), items)
             }
 
         rule type_() -> Type
-            = s: position!() ref_count: ("*")* kind: type_enum() e: position!() {
+            = s: position!() kind: type_enum() e: position!() {
             Type {
-                ref_count: ref_count.len(),
                 kind,
                 span: Span::new(s, e),
             }

@@ -2,20 +2,20 @@ use std::{collections::HashMap, sync::Arc};
 
 use ast::{FunctionDef, ProtoDef, Span, Type, TypeEnum};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ValueKind {
     Int(i64),
     Function(Arc<FunctionDef>),
     Proto(Arc<ProtoDef>),
-    Structure(Arc<Type>, HashMap<String, Value>),
-    Type(Arc<Type>),
+    Structure(Arc<TypeKind>, HashMap<String, Value>),
+    Type(Arc<TypeKind>),
     Unit,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Value {
     kind: ValueKind,
-    ty: Option<Arc<Type>>,
+    ty: Option<Arc<TypeKind>>,
 }
 
 impl Value {
@@ -47,14 +47,14 @@ impl Value {
         }
     }
 
-    pub fn new_structure(ty: Arc<Type>, structure: HashMap<String, Value>) -> Self {
+    pub fn new_structure(ty: Arc<TypeKind>, structure: HashMap<String, Value>) -> Self {
         Value {
             kind: ValueKind::Structure(ty, structure),
             ty: None,
         }
     }
 
-    pub fn new_type(ty: Arc<Type>) -> Self {
+    pub fn new_type(ty: Arc<TypeKind>) -> Self {
         Value {
             kind: ValueKind::Type(ty),
             ty: None,
@@ -90,6 +90,13 @@ impl Value {
             _ => unreachable!(),
         }
     }
+
+    pub fn as_type(&self) -> Arc<TypeKind> {
+        match &self.kind {
+            ValueKind::Type(ty) => ty.clone(),
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl Value {
@@ -97,7 +104,7 @@ impl Value {
         self.kind.clone()
     }
 
-    pub fn ty(&self) -> Arc<Type> {
+    pub fn ty(&self) -> Arc<TypeKind> {
         let span = Span::new(0, 0);
         self.ty.clone().unwrap_or({
             let kind = match self.kind {
@@ -105,15 +112,27 @@ impl Value {
                 ValueKind::Unit => TypeEnum::Unit,
                 _ => unreachable!(),
             };
-            Arc::new(Type {
-                kind,
-                ref_count: 0,
-                span,
-            })
+            TypeKind::new(Arc::new(Type { kind, span }))
         })
     }
 
-    pub fn set_type(&mut self, ty: Arc<Type>) {
+    pub fn set_type(&mut self, ty: Arc<TypeKind>) {
         self.ty = Some(ty);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeKind {
+    Primary(Arc<Type>),
+    Ptr(Arc<Self>),
+}
+
+impl TypeKind {
+    pub fn new(ty: Arc<Type>) -> Arc<Self> {
+        Arc::new(TypeKind::Primary(ty))
+    }
+
+    pub fn new_ptr(self: &Arc<Self>) -> Arc<Self> {
+        Arc::new(TypeKind::Ptr(self.clone()))
     }
 }

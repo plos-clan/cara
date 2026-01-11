@@ -164,6 +164,7 @@ dependencies = [
  "codegen_llvm",
  "parser",
  "query",
+ "simplifier",
  "tempfile",
 ]
 

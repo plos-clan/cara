@@ -50,6 +50,7 @@ pub trait ExpVisitor<V>: StatementVisitor<V> {
             Exp::TypeCast(type_cast) => self.visit_type_cast(type_cast),
             Exp::Structure(structure) => self.visit_structure(structure),
             Exp::FieldAccess(field_access) => self.visit_field_access(field_access),
+            Exp::Type(type_) => self.visit_type(type_),
         }
     }
 
@@ -79,6 +80,7 @@ pub trait ExpVisitor<V>: StatementVisitor<V> {
     fn visit_type_cast(&mut self, type_cast: &TypeCast) -> V;
     fn visit_structure(&mut self, structure: &Structure) -> V;
     fn visit_field_access(&mut self, field_access: &FieldAccess) -> V;
+    fn visit_type(&mut self, type_: &Type) -> V;
 }
 
 pub trait StatementVisitor<V> {

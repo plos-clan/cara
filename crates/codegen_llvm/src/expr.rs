@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     LLVM_CONTEXT, VisitorCtx,
     info::{Symbol, TypeKind, Value},
-    types::get_llvm_type,
+    types::{const_eval_type_to_llvm_type, get_llvm_type},
 };
 
 impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
@@ -128,11 +128,15 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_unary(&mut self, op: &ast::UnaryOp, value: Value<'v>, _: &Span) -> Value<'v> {
+        if op == &ast::UnaryOp::Ptr {
+            return Value::Type(value.as_type().new_ptr());
+        }
         let value = value.as_int();
         Value::Int(match op {
             ast::UnaryOp::Neg => self.builder.build_int_neg(value, "").unwrap(),
             ast::UnaryOp::Pos => value,
             ast::UnaryOp::Not => self.builder.build_not(value, "").unwrap(),
+            _ => unreachable!(),
         })
     }
 
@@ -195,7 +199,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) -> Value<'v> {
         let value = self.visit_right_value(&type_cast.exp);
-        let target_ty = get_llvm_type(self.queries.clone(), &type_cast.ty);
+        let target_ty = self.visit_right_value(&type_cast.ty).as_type();
 
         if value.is_int() && target_ty.is_int() {
             Value::Int(
@@ -269,7 +273,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_structure(&mut self, structure: &ast::Structure) -> Value<'v> {
-        let ty = get_llvm_type(self.queries.clone(), &structure.ty);
+        let ty = self.visit_right_value(&structure.ty).as_type();
         let TypeKind::Structure { field_ids, .. } = &ty else {
             unreachable!()
         };
@@ -286,6 +290,10 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             ty,
         }
     }
+
+    fn visit_type(&mut self, type_: &ast::Type) -> Value<'v> {
+        Value::Type(get_llvm_type(self.queries.clone(), type_))
+    }
 }
 
 impl<'v> VisitorCtx<'v> {
@@ -299,14 +307,14 @@ impl<'v> VisitorCtx<'v> {
                 self.global_funcs.get(&def_id.unwrap()).unwrap().clone()
             }
             const_eval::ValueKind::Int(i) => {
-                get_llvm_type(self.queries.clone(), value.ty().as_ref()).const_int(i)
+                const_eval_type_to_llvm_type(self.queries.clone(), &value.ty()).const_int(i)
             }
             const_eval::ValueKind::Unit => Value::Unit,
             const_eval::ValueKind::Type(ty) => {
-                Value::Type(get_llvm_type(self.queries.clone(), &ty))
+                Value::Type(const_eval_type_to_llvm_type(self.queries.clone(), &ty))
             }
             const_eval::ValueKind::Structure(ty, fields) => {
-                let ty = get_llvm_type(self.queries.clone(), &ty);
+                let ty = const_eval_type_to_llvm_type(self.queries.clone(), &ty);
                 let TypeKind::Structure { field_ids, .. } = &ty else {
                     unreachable!()
                 };

@@ -51,12 +51,12 @@ impl AnalyzerContext<'_> {
                 let ret_ty = proto
                     .return_type
                     .as_ref()
-                    .map(|t| self.visit_type(t))
+                    .map(|t| self.visit_right_value(t).into_type())
                     .unwrap_or(Type::Unit);
                 let param_types = proto
                     .params
                     .iter()
-                    .map(|p| self.visit_type(&p.param_type))
+                    .map(|p| self.visit_right_value(&p.param_type).into_type())
                     .collect::<Vec<_>>();
                 Some(Type::Function(Box::new(ret_ty), param_types))
             }
@@ -64,12 +64,12 @@ impl AnalyzerContext<'_> {
                 let ret_ty = func
                     .return_type
                     .as_ref()
-                    .map(|t| self.visit_type(t))
+                    .map(|t| self.visit_right_value(t).into_type())
                     .unwrap_or(Type::Unit);
                 let param_types = func
                     .params
                     .iter()
-                    .map(|p| self.visit_type(&p.param_type))
+                    .map(|p| self.visit_right_value(&p.param_type).into_type())
                     .collect::<Vec<_>>();
                 Some(Type::Function(Box::new(ret_ty), param_types))
             }
@@ -79,24 +79,19 @@ impl AnalyzerContext<'_> {
 }
 
 impl AnalyzerContext<'_> {
-    fn visit_type(&mut self, ty: &ast::Type) -> Type {
-        let mut result = match &ty.kind {
+    fn convert_type(&mut self, ty: &ast::Type) -> Type {
+        match &ty.kind {
             TypeEnum::Signed(width) => Type::Signed(*width),
             TypeEnum::Unsigned(width) => Type::Unsigned(*width),
-            TypeEnum::Array(base, len) => self.visit_type(base).array(*len),
+            TypeEnum::Array(base, len) => self.visit_right_value(base).into_type().array(*len),
             TypeEnum::Unit => Type::Unit,
-            TypeEnum::Structure(struct_ty) => {
+            TypeEnum::Structure(struct_ty, _) => {
                 let mut fields = HashMap::new();
                 for (name, ty) in struct_ty.iter() {
-                    fields.insert(name.clone(), self.visit_type(ty));
+                    fields.insert(name.clone(), self.visit_right_value(ty).into_type());
                 }
                 Type::Structure(fields)
             }
-            TypeEnum::Custom(var) => self.visit_var(var).into_type(),
-        };
-        for _ in 0..ty.ref_count {
-            result = result.pointer();
         }
-        result
     }
 }

@@ -14,6 +14,5 @@ fn const_eval_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> Value {
 
     match initial_value {
         ConstInitialValue::Exp(ConstExp { exp }) => eval_ctx.visit_right_value(exp),
-        ConstInitialValue::Type(ty) => eval_ctx.visit_type(ty),
     }
 }

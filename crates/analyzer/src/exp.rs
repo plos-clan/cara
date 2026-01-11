@@ -164,7 +164,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
         let TypeCast { exp, ty, span } = type_cast;
         let value = self.visit_right_value(exp);
         let value_type = value.type_();
-        let target = self.visit_type(ty);
+        let target = self.visit_right_value(ty).into_type();
 
         if *value_type == target {
             return value;
@@ -194,6 +194,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
             UnaryOp::Pos => value.check_pos(),
             UnaryOp::Neg => value.check_neg(),
             UnaryOp::Not => value.check_not(),
+            UnaryOp::Ptr => return Value::new(value.into_type().pointer()),
         };
         match result {
             Ok(value) => value,
@@ -218,7 +219,10 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
             static CHECKED: LazyLock<RwLock<HashMap<DefId, Value>>> =
                 LazyLock::new(|| RwLock::new(HashMap::new()));
 
-            let def_id = self.ctx.lookup_def_id(&name).unwrap();
+            let Some(def_id) = self.ctx.lookup_def_id(&name) else {
+                self.error_at(Error::Unknown(name), var.span);
+                return Value::default();
+            };
 
             if let Some(value) = CHECKED.read().unwrap().get(&def_id) {
                 value.clone()
@@ -227,7 +231,6 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
                 let const_def = ctx.get_def(def_id).unwrap();
                 match &const_def.initial_value {
                     ConstInitialValue::Exp(exp) => self.try_infer(&exp.exp),
-                    ConstInitialValue::Type(ty) => Some(self.visit_type(ty)),
                 }
             } {
                 self.required.push(def_id);
@@ -254,9 +257,9 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
     }
 
     fn visit_structure(&mut self, structure: &ast::Structure) -> Value {
-        let ty = self.visit_type(&structure.ty);
+        let ty = self.visit_right_value(&structure.ty).into_type();
         let Type::Structure(field_types) = &ty else {
-            self.error_at(Error::ExpectedStructType(ty), structure.ty.span);
+            self.error_at(Error::ExpectedStructType(ty), structure.ty.span());
             return Value::default();
         };
 
@@ -294,5 +297,9 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
                 );
                 Value::default()
             })
+    }
+
+    fn visit_type(&mut self, type_: &ast::Type) -> Value {
+        Value::new(self.convert_type(type_))
     }
 }

@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use ast::{FunctionDef, Param, ProtoDef, Type, visitor::BlockVisitor};
+use ast::{Exp, FunctionDef, Param, ProtoDef, visitor::BlockVisitor};
 use codegen::{
     BackendOptions, CodegenBackend, CodegenBackendBase, CodegenResult, EmitOptions, OutputType,
 };
@@ -25,7 +25,7 @@ use uuid::Uuid;
 
 use crate::{
     info::{Symbol, TypeKind, Value},
-    types::get_llvm_type,
+    types::get_llvm_type_from_exp,
 };
 
 mod expr;
@@ -151,16 +151,16 @@ impl LLVMBackend {
     fn llvm_fn_sig(
         ctx: Arc<QueryContext<'_>>,
         params: &[Param],
-        return_type: &Option<Type>,
+        return_type: &Option<Exp>,
     ) -> (TypeKind<'static>, TypeKind<'static>) {
         let mut param_types = Vec::new();
         for param in params {
-            param_types.push(get_llvm_type(ctx.clone(), &param.param_type));
+            param_types.push(get_llvm_type_from_exp(ctx.clone(), &param.param_type));
         }
 
         let return_type = return_type
             .as_ref()
-            .map(|return_type| get_llvm_type(ctx.clone(), return_type))
+            .map(|return_type| get_llvm_type_from_exp(ctx.clone(), return_type))
             .unwrap_or(TypeKind::new_unit());
         let function_type = return_type.function(param_types);
 
@@ -199,7 +199,7 @@ impl LLVMBackend {
         };
 
         for (id, param) in params.iter().enumerate() {
-            let ty = get_llvm_type(ctx.clone(), &param.param_type);
+            let ty = get_llvm_type_from_exp(ctx.clone(), &param.param_type);
 
             let ptr = visitor_ctx.create_entry_bb_alloca(&param.name, ty);
             visitor_ctx

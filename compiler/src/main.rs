@@ -9,6 +9,7 @@ use analyzer::queries::CHECK_CONST_DEF;
 use codegen::{BackendOptions, CodegenBackendBase, EmitOptions, OutputType, codegen};
 use codegen_llvm::LLVMBackend;
 use query::QueryContext;
+use simplifier::simplify;
 use tempfile::NamedTempFile;
 
 use args::*;
@@ -55,7 +56,7 @@ fn main() -> anyhow::Result<()> {
             let mut source_code = String::new();
             File::open(&input_file)?.read_to_string(&mut source_code)?;
 
-            let ast = parser::parse(&source_code)?;
+            let ast = simplify(parser::parse(&source_code)?);
             let query_ctx = QueryContext::new(&ast);
 
             let main_fn = query_ctx.lookup_def_id("main").unwrap();
