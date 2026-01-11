@@ -11,11 +11,23 @@ const scan_num = fn(num: *i64) {
     scanf("%d", num);
 };
 
-const main = extern C[main] fn() -> i64 {
+const dump_test_type = fn(self: *TestType) {
+    print_num((*self).a);
+    print_num((*self).b as i64);
+};
+
+const TestType = struct {
+    a: i64,
+    b: i32,
+};
+
+const main = extern C[main] fn() -> i32 {
     let mut fib_num = 0 as i64;
     scan_num(&fib_num);
     let fib_result = fib(fib_num);
     print_num(fib_result);
+    let test = [TestType]{ a: fib_num, b: 0 };
+    dump_test_type(&test);
     return 0;
 };
 

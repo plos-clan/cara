@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -50,33 +52,37 @@ pub enum Exp {
     ProtoDef(Box<ProtoDef>),
     Unit(Span),
     TypeCast(Box<TypeCast>),
+    Structure(Box<Structure>),
+    FieldAccess(Box<FieldAccess>),
 }
 
 impl Exp {
     pub fn span(&self) -> Span {
         match self {
-            Exp::Exp(_, span) => *span,
-            Exp::Number(number) => number.span,
-            Exp::Var(var) => var.span,
-            Exp::Unary(_, _, span) => *span,
-            Exp::Binary(_, _, _, span) => *span,
-            Exp::GetAddr(get_addr) => get_addr.span,
-            Exp::Str(_, span) => *span,
-            Exp::Deref(deref) => deref.span,
-            Exp::Index(index) => index.span,
-            Exp::Array(array) => array.span(),
-            Exp::Call(call) => call.span,
-            Exp::Block(block) => block.span,
-            Exp::Function(func) => func.span,
-            Exp::Assign(assign) => assign.span,
-            Exp::Return(return_) => return_.span,
-            Exp::IfExp(if_exp) => if_exp.span,
-            Exp::Unit(span) => *span,
-            Exp::For(for_) => for_.span,
-            Exp::Loop(loop_) => loop_.span,
-            Exp::While(while_) => while_.span,
-            Exp::ProtoDef(proto_def) => proto_def.span,
-            Exp::TypeCast(type_cast) => type_cast.span,
+            Self::Exp(_, span) => *span,
+            Self::Number(number) => number.span,
+            Self::Var(var) => var.span,
+            Self::Unary(_, _, span) => *span,
+            Self::Binary(_, _, _, span) => *span,
+            Self::GetAddr(get_addr) => get_addr.span,
+            Self::Str(_, span) => *span,
+            Self::Deref(deref) => deref.span,
+            Self::Index(index) => index.span,
+            Self::Array(array) => array.span(),
+            Self::Call(call) => call.span,
+            Self::Block(block) => block.span,
+            Self::Function(func) => func.span,
+            Self::Assign(assign) => assign.span,
+            Self::Return(return_) => return_.span,
+            Self::IfExp(if_exp) => if_exp.span,
+            Self::Unit(span) => *span,
+            Self::For(for_) => for_.span,
+            Self::Loop(loop_) => loop_.span,
+            Self::While(while_) => while_.span,
+            Self::ProtoDef(proto_def) => proto_def.span,
+            Self::TypeCast(type_cast) => type_cast.span,
+            Self::Structure(structure) => structure.span,
+            Self::FieldAccess(field_access) => field_access.span,
         }
     }
 }
@@ -175,6 +181,20 @@ pub struct For {
     pub end: Exp,
     pub step: Option<Exp>,
     pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Structure {
+    pub ty: Box<Type>,
+    pub fields: HashMap<String, Exp>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct FieldAccess {
+    pub lhs: Exp,
+    pub field: String,
     pub span: Span,
 }
 

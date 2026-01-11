@@ -1,4 +1,4 @@
-use ast::{Array, Span, visitor::ExpVisitor};
+use ast::{Array, Span, TypeEnum, visitor::ExpVisitor};
 use const_eval::{ValueKind, queries::CONST_EVAL_PROVIDER};
 
 use crate::MonomorphizeContext;
@@ -57,7 +57,7 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
     fn visit_unit(&mut self) {}
 
     fn visit_var(&mut self, var: &ast::Var) {
-        let name = var.path.path.join(".");
+        let name = var.path.path.join("::");
         if !self.locals.contains(&name) {
             let def_id = self.ctx.lookup_def_id(name).unwrap();
             let result = self.ctx.query_cached(&CONST_EVAL_PROVIDER, def_id).unwrap();
@@ -69,5 +69,29 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
 
     fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) {
         self.visit_right_value(&type_cast.exp);
+    }
+
+    fn visit_structure(&mut self, structure: &ast::Structure) {
+        self.visit_type(&structure.ty);
+        for (_, value) in structure.fields.iter() {
+            self.visit_right_value(value);
+        }
+    }
+
+    fn visit_field_access(&mut self, field_access: &ast::FieldAccess) {
+        self.visit_right_value(&field_access.lhs);
+    }
+}
+
+impl MonomorphizeContext<'_> {
+    pub(crate) fn visit_type(&mut self, type_: &ast::Type) {
+        match &type_.kind {
+            TypeEnum::Structure(struct_ty) => {
+                for (_, ty) in struct_ty.iter() {
+                    self.visit_type(ty);
+                }
+            }
+            _ => {}
+        }
     }
 }

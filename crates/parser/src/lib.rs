@@ -32,12 +32,12 @@ peg::parser! {
         }
 
         rule proto_def() -> ProtoDef
-        = l: position!() "proto" __ abi: abi_kind()? _ "fn" _ "(" _ params: (param() ** ",") _ ")" return_type: (__ "->" _ t: type_() {t})? _ r: position!() {
-            ProtoDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, span: Span::new(l, r) }
+        = l: position!() "proto" __ abi: abi_kind() _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: type_() {t})? _ r: position!() {
+            ProtoDef { abi: abi, params, return_type, span: Span::new(l, r) }
         }
 
         rule function_def() -> FunctionDef
-        = l: position!() abi: ("extern" __ a: abi_kind() {a})? _ "fn" _ "(" _ params: (param() ** ",") _ ")" return_type: (__ "->" _ t: type_() {t})? _ block: block() _ r: position!() {
+        = l: position!() abi: ("extern" __ a: abi_kind() {a})? _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: type_() {t})? _ block: block() _ r: position!() {
             FunctionDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, block, span: Span::new(l, r) }
         }
 
@@ -49,6 +49,8 @@ peg::parser! {
         rule const_initial_value() -> ConstInitialValue
         = e: expr() {
             ConstInitialValue::Exp(ConstExp { exp: e })
+        } / t: type_() {
+            ConstInitialValue::Type(t)
         }
 
         rule block() -> Block
@@ -88,139 +90,157 @@ peg::parser! {
         }
 
         rule param() -> Param
-        = l: position!() _ name: identifier() _ ":" _ ty: type_() _ r: position!() {
+        = l: position!() name: identifier() _ ":" _ ty: type_() r: position!() {
             Param { name, param_type: ty, span: Span::new(l, r) }
         }
 
         rule expr() -> Exp =
             p: proto_def() { Exp::ProtoDef(Box::new(p)) } /
             f: function_def() { Exp::Function(Box::new(f)) } /
-            e: expr_impl() { e }
-
-        rule expr_impl() -> Exp = precedence!{
-            l: position!() _ "return" __ rhs: @ {
-                let span = Span::new(l, rhs.span().end());
-                Exp::Return(Box::new(Return { value: Some(rhs), span }))
+            precedence!{
+                l: position!() _ "return" __ rhs: @ {
+                    let span = Span::new(l, rhs.span().end());
+                    Exp::Return(Box::new(Return { value: Some(rhs), span }))
+                }
+                l: position!() _ "return" __ ";" {
+                    let span = Span::new(l, l);
+                    Exp::Return(Box::new(Return { value: None, span }))
+                }
+                lhs: (@) _ "=" _ rhs: @ {
+                    let span = Span::new(lhs.span().start(), rhs.span().end());
+                    Exp::Assign(Box::new(Assign { lhs, rhs, span }))
+                }
+                --
+                l: (@) _ "<" _ r: @ {
+                    binary_op_rule!(l, r, Lt)
+                }
+                l: (@) _ ">" _ r: @ {
+                    binary_op_rule!(l, r, Gt)
+                }
+                l: (@) _ "<=" _ r: @ {
+                    binary_op_rule!(l, r, Le)
+                }
+                l: (@) _ ">=" _ r: @ {
+                    binary_op_rule!(l, r, Ge)
+                }
+                l: (@) _ "==" _ r: @ {
+                    binary_op_rule!(l, r, Eq)
+                }
+                l: (@) _ "!=" _ r: @ {
+                    binary_op_rule!(l, r, Ne)
+                }
+                --
+                l: (@) _ "&&" _ r: @ {
+                    binary_op_rule!(l, r, And)
+                }
+                l: (@) _ "||" _ r: @ {
+                    binary_op_rule!(l, r, Or)
+                }
+                --
+                l: (@) _ "+" _ r: @ {
+                    binary_op_rule!(l, r, Add)
+                }
+                l: (@) _ "-" _ r: @ {
+                    binary_op_rule!(l, r, Sub)
+                }
+                --
+                l: (@) _ "*" _ r: @ {
+                    binary_op_rule!(l, r, Mul)
+                }
+                l: (@) _ "/" _ r: @ {
+                    binary_op_rule!(l, r, Div)
+                }
+                l: (@) _ "%" _ r: @ {
+                    binary_op_rule!(l, r, Mod)
+                }
+                --
+                s: position!() "+" _ r: (@) {
+                    let span = Span::new(s, r.span().end());
+                    Exp::Unary(UnaryOp::Pos, Box::new(r), span)
+                }
+                s: position!() "-" _ r: (@) {
+                    let span = Span::new(s, r.span().end());
+                    Exp::Unary(UnaryOp::Neg, Box::new(r), span)
+                }
+                s: position!() "!" _ r: (@) {
+                    let span = Span::new(s, r.span().end());
+                    Exp::Unary(UnaryOp::Not, Box::new(r), span)
+                }
+                --
+                l: (@) _ "<<" _ r: @ {
+                    binary_op_rule!(l, r, LShift)
+                }
+                l: (@) _ ">>" _ r: @ {
+                    binary_op_rule!(l, r, RShift)
+                }
+                --
+                l: (@) __ "as" __ t: type_() {
+                    let span = Span::new(l.span().start(), t.span.end());
+                    Exp::TypeCast(Box::new(TypeCast { exp: l, ty: t, span }))
+                }
+                --
+                d: deref() { Exp::Deref(Box::new(d)) }
+                --
+                l: (@) _ "[" _ r: expr() _ "]" {
+                    let span = Span::new(l.span().start(), r.span().end());
+                    Exp::Index(Box::new(Index {
+                        exp: l,
+                        index: r,
+                        span
+                    }))
+                }
+                --
+                l: position!() "&" _ e: (@) {
+                    let span = Span::new(l, e.span().end());
+                    Exp::GetAddr(Box::new(GetAddr { exp: e, span }))
+                }
+                --
+                "[" _ t: type_() _ "]" _ "{" _
+                    fields: ((name: identifier() _ ":" _ value: expr() {(name, value)}) ** ("," _)) ","?
+                _ "}" r: position!() {
+                    let span = Span::new(t.span.start(), r);
+                    Exp::Structure(Box::new(Structure {
+                        ty: Box::new(t),
+                        fields: fields.into_iter().collect(),
+                        span
+                    }))
+                }
+                --
+                l: @ "." n: identifier() r: position!() {
+                    let span = Span::new(l.span().start(), r);
+                    Exp::FieldAccess(Box::new(FieldAccess {
+                        lhs: l,
+                        field: n,
+                        span
+                    }))
+                }
+                --
+                l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: position!() {
+                    let span = Span::new(l.span().start(), r);
+                    Exp::Call(Box::new(Call {
+                        func: l,
+                        args,
+                        span
+                    }))
+                }
+                --
+                f: for_exp() { Exp::For(Box::new(f)) }
+                l: loop_exp() { Exp::Loop(Box::new(l)) }
+                w: while_exp() { Exp::While(Box::new(w)) }
+                i: if_exp() { Exp::IfExp(Box::new(i)) }
+                l: position!() "(" _ ")" r: position!() {
+                    let span = Span::new(l, r);
+                    Exp::Unit(span)
+                }
+                "(" _ e: expr() _ ")" {
+                    e
+                }
+                n: number() { n }
+                s: string_wrapper() { s }
+                v: var() { Exp::Var(Box::new(v)) }
+                b: block() { Exp::Block(Box::new(b)) }
+                a: array() { Exp::Array(Box::new(a)) }
             }
-            l: position!() _ "return" __ ";" {
-                let span = Span::new(l, l);
-                Exp::Return(Box::new(Return { value: None, span }))
-            }
-            lhs: (@) _ "=" _ rhs: @ {
-                let span = Span::new(lhs.span().start(), rhs.span().end());
-                Exp::Assign(Box::new(Assign { lhs, rhs, span }))
-            }
-            --
-            l: (@) _ "<" _ r: @ {
-                binary_op_rule!(l, r, Lt)
-            }
-            l: (@) _ ">" _ r: @ {
-                binary_op_rule!(l, r, Gt)
-            }
-            l: (@) _ "<=" _ r: @ {
-                binary_op_rule!(l, r, Le)
-            }
-            l: (@) _ ">=" _ r: @ {
-                binary_op_rule!(l, r, Ge)
-            }
-            l: (@) _ "==" _ r: @ {
-                binary_op_rule!(l, r, Eq)
-            }
-            l: (@) _ "!=" _ r: @ {
-                binary_op_rule!(l, r, Ne)
-            }
-            --
-            l: (@) _ "&&" _ r: @ {
-                binary_op_rule!(l, r, And)
-            }
-            l: (@) _ "||" _ r: @ {
-                binary_op_rule!(l, r, Or)
-            }
-            --
-            l: (@) _ "+" _ r: @ {
-                binary_op_rule!(l, r, Add)
-            }
-            l: (@) _ "-" _ r: @ {
-                binary_op_rule!(l, r, Sub)
-            }
-            --
-            l: (@) _ "*" _ r: @ {
-                binary_op_rule!(l, r, Mul)
-            }
-            l: (@) _ "/" _ r: @ {
-                binary_op_rule!(l, r, Div)
-            }
-            l: (@) _ "%" _ r: @ {
-                binary_op_rule!(l, r, Mod)
-            }
-            --
-            s: position!() "+" _ r: (@) {
-                let span = Span::new(s, r.span().end());
-                Exp::Unary(UnaryOp::Pos, Box::new(r), span)
-            }
-            s: position!() "-" _ r: (@) {
-                let span = Span::new(s, r.span().end());
-                Exp::Unary(UnaryOp::Neg, Box::new(r), span)
-            }
-            s: position!() "!" _ r: (@) {
-                let span = Span::new(s, r.span().end());
-                Exp::Unary(UnaryOp::Not, Box::new(r), span)
-            }
-            --
-            l: (@) _ "<<" _ r: @ {
-                binary_op_rule!(l, r, LShift)
-            }
-            l: (@) _ ">>" _ r: @ {
-                binary_op_rule!(l, r, RShift)
-            }
-            --
-            l: @ __ "as" __ t: type_() r: position!() {
-                let span = Span::new(l.span().start(), r);
-                Exp::TypeCast(Box::new(TypeCast { exp: l, ty: t, span }))
-            }
-            --
-            d: deref() { Exp::Deref(Box::new(d)) }
-            --
-            l: (@) _ "[" _ r: expr() _ "]" {
-                let span = Span::new(l.span().start(), r.span().end());
-                Exp::Index(Box::new(Index {
-                    exp: l,
-                    index: r,
-                    span
-                }))
-            }
-            --
-            l: position!() "&" _ e: (@) {
-                let span = Span::new(l, e.span().end());
-                Exp::GetAddr(Box::new(GetAddr { exp: e, span }))
-            }
-            --
-            l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: position!() {
-                let span = Span::new(l.span().start(), r);
-                Exp::Call(Box::new(Call {
-                    func: l,
-                    args,
-                    span
-                }))
-            }
-            --
-            f: for_exp() { Exp::For(Box::new(f)) }
-            l: loop_exp() { Exp::Loop(Box::new(l)) }
-            w: while_exp() { Exp::While(Box::new(w)) }
-            i: if_exp() { Exp::IfExp(Box::new(i)) }
-            l: position!() "(" _ ")" r: position!() {
-                let span = Span::new(l, r);
-                Exp::Unit(span)
-            }
-            "(" _ e: expr() _ ")" {
-                e
-            }
-            n: number() { n }
-            s: string_wrapper() { s }
-            v: var() { Exp::Var(Box::new(v)) }
-            b: block() { Exp::Block(Box::new(b)) }
-            a: array() { Exp::Array(Box::new(a)) }
-        }
 
         rule for_exp() -> For
             = l: position!() "for" __ v: identifier() _ "in" _
@@ -314,7 +334,7 @@ peg::parser! {
                     span: Span::new(s, e)
                 }
             }
-            / s: position!() i:identifier() _ "." _ p: path() e: position!() {
+            / s: position!() i:identifier() _ "::" _ p: path() e: position!() {
                 let mut path = vec![i];
                 path.extend(p.path);
                 Path{
@@ -330,10 +350,14 @@ peg::parser! {
             } / "u" n:$(['0'..='9']+) {
                 let width = n.parse().unwrap();
                 TypeEnum::Unsigned(width)
+            } / n: var() {
+                TypeEnum::Custom(n)
             } / "(" _ ")" {
                 TypeEnum::Unit
             } / "[" _ inner: type_() _ ";" _ len: width() _ "]" {
                 TypeEnum::Array(Box::new(inner), len)
+            } / "struct" _ "{" _ fields: (name: identifier() _ ":" _ ty: type_() { (name, ty) }) ** ("," _) ","? _ "}" {
+                TypeEnum::Structure(fields.into_iter().collect())
             }
 
         rule type_() -> Type
@@ -346,9 +370,14 @@ peg::parser! {
         }
 
         rule identifier() -> String
-          = n:$([ 'a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '0'..='9' | '_' ]*) {
+          = n:$(!keyword() ['a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '0'..='9' | '_' ]*) {
               n.into()
           }
+
+        rule keyword()
+          = ("const" / "fn" / "extern" / "mut" / "proto" / "let" / "struct"
+            / "if" / "while" / "loop" / "for" / "in" / "else"
+            / "i" n:$(['0'..='9']+) / "u" n:$(['0'..='9']+)) __
 
         rule string() -> String
         = "\""  s: string_character()* "\"" { s.into_iter().collect() }

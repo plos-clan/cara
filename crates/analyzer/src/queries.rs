@@ -6,9 +6,7 @@ use ast::{
 };
 use query::{DefId, Provider, QueryContext};
 
-use crate::{
-    AnalyzerContext, DiagnosticDumper, Error, Symbol, Type, Value, Warning, get_analyzer_type,
-};
+use crate::{AnalyzerContext, DiagnosticDumper, Error, Symbol, Type, Value, Warning};
 
 pub static CHECK_CONST_DEF: LazyLock<Provider<DefId, AnalyzeResult>> =
     LazyLock::new(|| Provider::new(check_const_def));
@@ -62,12 +60,12 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
                     let ret_ty = proto
                         .return_type
                         .as_ref()
-                        .map(get_analyzer_type)
+                        .map(|t| analyzer_ctx.visit_type(t))
                         .unwrap_or(Type::Unit);
                     let param_types = proto
                         .params
                         .iter()
-                        .map(|p| get_analyzer_type(&p.param_type))
+                        .map(|p| analyzer_ctx.visit_type(&p.param_type))
                         .collect::<Vec<_>>();
                     Type::Function(Box::new(ret_ty), param_types)
                 }
@@ -75,12 +73,12 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
                     let ret_ty = func
                         .return_type
                         .as_ref()
-                        .map(get_analyzer_type)
+                        .map(|t| analyzer_ctx.visit_type(t))
                         .unwrap_or(Type::Unit);
                     analyzer_ctx.ret_ty = Some(ret_ty.clone());
                     let mut param_types = Vec::new();
                     for param in func.params.iter() {
-                        let ty = get_analyzer_type(&param.param_type);
+                        let ty = analyzer_ctx.visit_type(&param.param_type);
                         param_types.push(ty.clone());
                         analyzer_ctx.symbols.pre_push(Symbol::Var(
                             param.name.clone(),
@@ -106,6 +104,7 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
             };
             Value::new(ty)
         }
+        ConstInitialValue::Type(ty) => Value::new(analyzer_ctx.visit_type(ty)),
     };
 
     let AnalyzerContext {

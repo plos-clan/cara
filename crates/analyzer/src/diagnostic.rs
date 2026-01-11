@@ -8,7 +8,11 @@ use crate::Type;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Invalid type cast: {0} -> {1}")]
+    #[error("Invalid field {0}.")]
+    InvalidField(String),
+    #[error("Expected struct type, found {0}.")]
+    ExpectedStructType(Type),
+    #[error("Invalid type cast: {0} -> {1}.")]
     InvalidTypeCast(Type, Type),
     #[error("Dereferencing value with type {0}.")]
     WrongDeref(Type),

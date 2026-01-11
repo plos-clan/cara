@@ -21,7 +21,7 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
             return Value::Unit;
         }
 
-        let ptr = lhs.get_pointer();
+        let ptr = lhs.as_ptr();
         self.builder.build_store(ptr, rhs).unwrap();
 
         Value::Unit
@@ -154,7 +154,7 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
             )
             .unwrap();
         self.builder
-            .build_store(alloca.get_pointer(), new_value)
+            .build_store(alloca.as_ptr(), new_value)
             .unwrap();
         self.builder
             .build_unconditional_branch(condition_block)

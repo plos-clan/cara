@@ -107,7 +107,8 @@ impl LLVMBackend {
                     _ => unreachable!(),
                 };
 
-                let (function_type, return_type) = Self::llvm_fn_sig(params, return_type);
+                let (function_type, return_type) =
+                    Self::llvm_fn_sig(ctx.clone(), params, return_type);
                 let function_value =
                     module.add_function(&function_name, function_type.as_function_type(), None);
                 function_value.set_call_conventions(LLVMCallConv::LLVMCCallConv as u32);
@@ -133,7 +134,7 @@ impl LLVMBackend {
                 _ => Uuid::new_v4().to_string(),
             };
 
-            let (function_type, return_type) = Self::llvm_fn_sig(params, return_type);
+            let (function_type, return_type) = Self::llvm_fn_sig(ctx.clone(), params, return_type);
             let function_value =
                 module.add_function(&function_name, function_type.as_function_type(), None);
             function_value.set_call_conventions(LLVMCallConv::LLVMCCallConv as u32);
@@ -148,17 +149,18 @@ impl LLVMBackend {
 
     #[inline(always)]
     fn llvm_fn_sig(
+        ctx: Arc<QueryContext<'_>>,
         params: &[Param],
         return_type: &Option<Type>,
     ) -> (TypeKind<'static>, TypeKind<'static>) {
         let mut param_types = Vec::new();
         for param in params {
-            param_types.push(get_llvm_type(&param.param_type));
+            param_types.push(get_llvm_type(ctx.clone(), &param.param_type));
         }
 
         let return_type = return_type
             .as_ref()
-            .map(|return_type| get_llvm_type(return_type))
+            .map(|return_type| get_llvm_type(ctx.clone(), return_type))
             .unwrap_or(TypeKind::new_unit());
         let function_type = return_type.function(param_types);
 
@@ -187,7 +189,7 @@ impl LLVMBackend {
         let builder = LLVM_CONTEXT.create_builder();
         builder.position_at_end(entry_block);
 
-        let mut ctx = VisitorCtx {
+        let mut visitor_ctx = VisitorCtx {
             builder,
             symbols: SymbolTable::new(),
             module,
@@ -197,32 +199,32 @@ impl LLVMBackend {
         };
 
         for (id, param) in params.iter().enumerate() {
-            let ty = get_llvm_type(&param.param_type);
+            let ty = get_llvm_type(ctx.clone(), &param.param_type);
 
-            let ptr = ctx.create_entry_bb_alloca(&param.name, ty);
-            ctx.builder
-                .build_store(
-                    ptr.get_pointer(),
-                    function.get_nth_param(id as u32).unwrap(),
-                )
+            let ptr = visitor_ctx.create_entry_bb_alloca(&param.name, ty);
+            visitor_ctx
+                .builder
+                .build_store(ptr.as_ptr(), function.get_nth_param(id as u32).unwrap())
                 .unwrap();
 
-            ctx.symbols.pre_push(Symbol::Var(param.name.clone(), ptr));
+            visitor_ctx
+                .symbols
+                .pre_push(Symbol::Var(param.name.clone(), ptr));
         }
 
-        if let Some(value) = ctx.visit_block(block)
+        if let Some(value) = visitor_ctx.visit_block(block)
             && !matches!(value, Value::Unit)
         {
-            ctx.builder.build_return(Some(&value)).unwrap();
+            visitor_ctx.builder.build_return(Some(&value)).unwrap();
         }
-        if ctx
+        if visitor_ctx
             .builder
             .get_insert_block()
             .unwrap()
             .get_terminator()
             .is_none()
         {
-            ctx.builder.build_return(None).unwrap();
+            visitor_ctx.builder.build_return(None).unwrap();
         }
     }
 }
@@ -364,7 +366,7 @@ impl<'v> VisitorCtx<'v> {
             unreachable!()
         };
         if !init.is_unit() {
-            self.builder.build_store(ptr, init).unwrap();
+            init.init_alloca(ptr, &self.builder);
         }
         alloca
     }

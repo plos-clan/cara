@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
-use crate::Span;
+use crate::{Span, Var};
 
 #[derive(Debug, Clone)]
 pub enum TypeEnum {
@@ -8,6 +8,9 @@ pub enum TypeEnum {
     Unsigned(u32),
 
     Array(Box<Type>, u32),
+    Structure(HashMap<String, Type>),
+
+    Custom(Var),
 
     Unit,
 }
@@ -28,6 +31,14 @@ impl Display for Type {
             TypeEnum::Signed(bits) => write!(f, "i{}", bits),
             TypeEnum::Unsigned(bits) => write!(f, "u{}", bits),
             TypeEnum::Array(inner, len) => write!(f, "[{}; {}]", inner, len),
+            TypeEnum::Structure(fields) => {
+                write!(f, "{{")?;
+                for (name, ty) in fields {
+                    write!(f, "{}: {:?}, ", name, ty)?;
+                }
+                write!(f, "}}")
+            }
+            TypeEnum::Custom(var) => write!(f, "{}", var.path.path.join("::")),
             TypeEnum::Unit => write!(f, "()"),
         }
     }

@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use inkwell::{
     AddressSpace,
     types::{
         AnyType, AnyTypeEnum, ArrayType, AsTypeRef, BasicMetadataTypeEnum, BasicType,
-        BasicTypeEnum, FunctionType, IntType, PointerType, VoidType,
+        BasicTypeEnum, FunctionType, IntType, PointerType, StructType, VoidType,
     },
     values::BasicValue,
 };
@@ -21,6 +23,11 @@ pub enum TypeKind<'t> {
     Ptr {
         ty: PointerType<'t>,
         pointee: Box<Self>,
+    },
+    Structure {
+        ty: StructType<'t>,
+        field_ids: HashMap<usize, String>,
+        field_types: Vec<Box<Self>>,
     },
 }
 
@@ -82,8 +89,9 @@ impl<'t> TypeKind<'t> {
         match self {
             TypeKind::Unit(void_type) => TypeKind::Function(void_type.fn_type(&arg_types, false)),
             TypeKind::Int(int_type) => TypeKind::Function(int_type.fn_type(&arg_types, false)),
-            TypeKind::Array { ty, element: _ } => TypeKind::Function(ty.fn_type(&arg_types, false)),
-            TypeKind::Ptr { ty, pointee: _ } => TypeKind::Function(ty.fn_type(&arg_types, false)),
+            TypeKind::Array { ty, .. } => TypeKind::Function(ty.fn_type(&arg_types, false)),
+            TypeKind::Ptr { ty, .. } => TypeKind::Function(ty.fn_type(&arg_types, false)),
+            TypeKind::Structure { ty, .. } => TypeKind::Function(ty.fn_type(&arg_types, false)),
             _ => unreachable!(),
         }
     }
@@ -135,12 +143,17 @@ impl<'t> TypeKind<'t> {
             TypeKind::Int(ty) => {
                 ty.const_array(&value_iter.map(|v| v.into_int_value()).collect::<Vec<_>>())
             }
-            TypeKind::Array { ty, element: _ } => {
+            TypeKind::Array { ty, .. } => {
                 ty.const_array(&value_iter.map(|v| v.into_array_value()).collect::<Vec<_>>())
             }
-            TypeKind::Ptr { ty, pointee: _ } => ty.const_array(
+            TypeKind::Ptr { ty, .. } => ty.const_array(
                 &value_iter
                     .map(|v| v.into_pointer_value())
+                    .collect::<Vec<_>>(),
+            ),
+            TypeKind::Structure { ty, .. } => ty.const_array(
+                &value_iter
+                    .map(|v| v.into_struct_value())
                     .collect::<Vec<_>>(),
             ),
             TypeKind::Unit(_) => return Value::Unit,
@@ -157,8 +170,9 @@ impl<'t> From<TypeKind<'t>> for BasicTypeEnum<'t> {
     fn from(value: TypeKind<'t>) -> Self {
         match value {
             TypeKind::Int(int_type) => int_type.into(),
-            TypeKind::Ptr { ty, pointee: _ } => ty.into(),
-            TypeKind::Array { ty, element: _ } => ty.into(),
+            TypeKind::Ptr { ty, .. } => ty.into(),
+            TypeKind::Array { ty, .. } => ty.into(),
+            TypeKind::Structure { ty, .. } => ty.into(),
             _ => unreachable!(),
         }
     }
@@ -168,8 +182,9 @@ impl<'t> From<TypeKind<'t>> for BasicMetadataTypeEnum<'t> {
     fn from(value: TypeKind<'t>) -> Self {
         match value {
             TypeKind::Int(int_type) => int_type.into(),
-            TypeKind::Ptr { ty, pointee: _ } => ty.into(),
-            TypeKind::Array { ty, element: _ } => ty.into(),
+            TypeKind::Ptr { ty, .. } => ty.into(),
+            TypeKind::Array { ty, .. } => ty.into(),
+            TypeKind::Structure { ty, .. } => ty.into(),
             _ => unreachable!(),
         }
     }
@@ -181,8 +196,9 @@ impl<'t> From<TypeKind<'t>> for AnyTypeEnum<'t> {
             TypeKind::Unit(void_type) => void_type.into(),
             TypeKind::Function(func_type) => func_type.into(),
             TypeKind::Int(int_type) => int_type.into(),
-            TypeKind::Ptr { ty, pointee: _ } => ty.into(),
-            TypeKind::Array { ty, element: _ } => ty.into(),
+            TypeKind::Ptr { ty, .. } => ty.into(),
+            TypeKind::Array { ty, .. } => ty.into(),
+            TypeKind::Structure { ty, .. } => ty.into(),
         }
     }
 }

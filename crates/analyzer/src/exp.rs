@@ -12,9 +12,8 @@ use ast::{
 use query::DefId;
 
 use crate::{
-    AnalyzerContext, Error, Symbol, Type, Value, get_analyzer_type,
+    AnalyzerContext, Error, Symbol, Type, Value,
     queries::{AnalyzeResult, CHECK_CONST_DEF},
-    try_infer,
 };
 
 impl ExpVisitor<Value> for AnalyzerContext<'_> {
@@ -165,7 +164,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
         let TypeCast { exp, ty, span } = type_cast;
         let value = self.visit_right_value(exp);
         let value_type = value.type_();
-        let target = get_analyzer_type(ty);
+        let target = self.visit_type(ty);
 
         if *value_type == target {
             return value;
@@ -210,7 +209,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
     }
 
     fn visit_var(&mut self, var: &ast::Var) -> Value {
-        let name = var.path.path.join(".");
+        let name = var.path.path.join("::");
         if let Some(symbol) = self.symbols.lookup(&name) {
             match symbol {
                 Symbol::Var(_, _, value) => value.clone(),
@@ -223,11 +222,14 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
 
             if let Some(value) = CHECKED.read().unwrap().get(&def_id) {
                 value.clone()
-            } else if let Some(ty) = try_infer({
-                let const_def = self.ctx.get_def(def_id).unwrap();
-                let ConstInitialValue::Exp(exp) = &const_def.initial_value;
-                &exp.exp
-            }) {
+            } else if let Some(ty) = {
+                let ctx = self.ctx.clone();
+                let const_def = ctx.get_def(def_id).unwrap();
+                match &const_def.initial_value {
+                    ConstInitialValue::Exp(exp) => self.try_infer(&exp.exp),
+                    ConstInitialValue::Type(ty) => Some(self.visit_type(ty)),
+                }
+            } {
                 self.required.push(def_id);
                 Value::new(ty)
             } else {
@@ -249,5 +251,48 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
                 value
             }
         }
+    }
+
+    fn visit_structure(&mut self, structure: &ast::Structure) -> Value {
+        let ty = self.visit_type(&structure.ty);
+        let Type::Structure(field_types) = &ty else {
+            self.error_at(Error::ExpectedStructType(ty), structure.ty.span);
+            return Value::default();
+        };
+
+        for (field_name, field_exp) in structure.fields.iter() {
+            let field_value = self.visit_right_value(field_exp);
+            let field_type = field_value.into_type();
+            let Some(should_be_type) = field_types.get(field_name) else {
+                self.error_at(Error::InvalidField(field_name.clone()), field_exp.span());
+                continue;
+            };
+            if field_type != *should_be_type {
+                self.error_at(
+                    Error::TypeMismatch(field_type, should_be_type.clone()),
+                    field_exp.span(),
+                );
+            }
+        }
+
+        Value::new(ty)
+    }
+
+    fn visit_field_access(&mut self, field_access: &ast::FieldAccess) -> Value {
+        let ty = self.visit_right_value(&field_access.lhs).into_type();
+        let Type::Structure(field_types) = &ty else {
+            self.error_at(Error::ExpectedStructType(ty), field_access.lhs.span());
+            return Value::default();
+        };
+        field_types
+            .get(&field_access.field)
+            .map(|t| Value::new(t.clone()))
+            .unwrap_or_else(|| {
+                self.error_at(
+                    Error::InvalidField(field_access.field.clone()),
+                    field_access.span,
+                );
+                Value::default()
+            })
     }
 }

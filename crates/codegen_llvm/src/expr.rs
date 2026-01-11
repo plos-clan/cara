@@ -6,6 +6,7 @@ use inkwell::{
 };
 
 use ast::{Array, BinaryOp, Call, Span, Var, visitor::ExpVisitor};
+use query::DefId;
 use uuid::Uuid;
 
 use crate::{
@@ -78,22 +79,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_deref(&mut self, deref: &ast::Deref) -> Value<'v> {
-        let ptr = self.visit_right_value(&deref.exp);
-        if matches!(ptr, Value::Unit) {
-            return Value::Unit;
-        }
-        let ty = ptr.type_();
-        let pointee_ty = ty.derefed();
-
-        if pointee_ty.is_unit() {
-            return Value::Unit;
-        }
-
-        let result = self
-            .builder
-            .build_load(pointee_ty.clone(), ptr.get_pointer(), "")
-            .unwrap();
-        Value::new_from(result.as_any_value_enum(), pointee_ty)
+        self.visit_right_value(&deref.exp)
     }
 
     fn visit_index(&mut self, index_node: &ast::Index) -> Value<'v> {
@@ -182,7 +168,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_var(&mut self, var: &Var) -> Value<'v> {
-        let name = var.path.path.join(".");
+        let name = var.path.path.join("::");
         if let Some(symbol) = self.symbols.lookup(&name) {
             match symbol {
                 Symbol::Var(_, value) => value.clone(),
@@ -195,13 +181,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                 .query_cached(&CONST_EVAL_PROVIDER, def_id)
                 .unwrap();
 
-            match value.kind() {
-                const_eval::ValueKind::Function(_) | const_eval::ValueKind::Proto(_) => {
-                    self.global_funcs.get(&def_id).unwrap().clone()
-                }
-                const_eval::ValueKind::Int(i) => get_llvm_type(value.ty().as_ref()).const_int(i),
-                const_eval::ValueKind::Unit => Value::Unit,
-            }
+            self.const_value_to_llvm_value(Some(def_id), &value)
         }
     }
 
@@ -215,7 +195,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) -> Value<'v> {
         let value = self.visit_right_value(&type_cast.exp);
-        let target_ty = get_llvm_type(&type_cast.ty);
+        let target_ty = get_llvm_type(self.queries.clone(), &type_cast.ty);
 
         if value.is_int() && target_ty.is_int() {
             Value::Int(
@@ -225,13 +205,13 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             )
         } else if value.is_ptr() && target_ty.is_ptr() {
             Value::Pointer {
-                value: value.get_pointer(),
+                value: value.as_ptr(),
                 ty: target_ty,
             }
         } else if value.is_ptr() && target_ty.is_int() {
             Value::Int(
                 self.builder
-                    .build_ptr_to_int(value.get_pointer(), target_ty.as_int_type(), "")
+                    .build_ptr_to_int(value.as_ptr(), target_ty.as_int_type(), "")
                     .unwrap(),
             )
         } else if value.is_int() && target_ty.is_ptr() {
@@ -249,5 +229,102 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
     fn visit_unit(&mut self) -> Value<'v> {
         Value::Unit
+    }
+
+    fn visit_field_access(&mut self, field_access: &ast::FieldAccess) -> Value<'v> {
+        let value = self.visit_left_value(&field_access.lhs);
+        let value_ty = value.type_().derefed();
+        let value = value.as_ptr();
+
+        let TypeKind::Structure {
+            field_ids,
+            field_types,
+            ..
+        } = value_ty
+        else {
+            panic!("Invalid type {:?}", value_ty)
+        };
+
+        let field_id = *field_ids
+            .iter()
+            .find(|(_, name)| *name == &field_access.field)
+            .unwrap()
+            .0;
+        let field_type = field_types[field_id].clone();
+
+        let field_ptr = unsafe {
+            self.builder.build_in_bounds_gep(
+                (*field_type).clone(),
+                value,
+                &[TypeKind::new_int(64).const_int(field_id as i64).as_int()],
+                "",
+            )
+        }
+        .unwrap();
+
+        Value::Alloca {
+            value: field_ptr,
+            value_ty: (*field_type).clone(),
+        }
+    }
+
+    fn visit_structure(&mut self, structure: &ast::Structure) -> Value<'v> {
+        let ty = get_llvm_type(self.queries.clone(), &structure.ty);
+        let TypeKind::Structure { field_ids, .. } = &ty else {
+            unreachable!()
+        };
+
+        let mut field_values = Vec::new();
+        for id in 0..field_ids.len() {
+            let name = field_ids[&id].clone();
+            let field_value = self.visit_right_value(&structure.fields[&name]);
+            field_values.push(field_value.as_basic_value_enum());
+        }
+
+        Value::Structure {
+            value: LLVM_CONTEXT.const_struct(&field_values, false),
+            ty,
+        }
+    }
+}
+
+impl<'v> VisitorCtx<'v> {
+    fn const_value_to_llvm_value(
+        &mut self,
+        def_id: Option<DefId>,
+        value: &const_eval::Value,
+    ) -> Value<'v> {
+        match value.kind() {
+            const_eval::ValueKind::Function(_) | const_eval::ValueKind::Proto(_) => {
+                self.global_funcs.get(&def_id.unwrap()).unwrap().clone()
+            }
+            const_eval::ValueKind::Int(i) => {
+                get_llvm_type(self.queries.clone(), value.ty().as_ref()).const_int(i)
+            }
+            const_eval::ValueKind::Unit => Value::Unit,
+            const_eval::ValueKind::Type(ty) => {
+                Value::Type(get_llvm_type(self.queries.clone(), &ty))
+            }
+            const_eval::ValueKind::Structure(ty, fields) => {
+                let ty = get_llvm_type(self.queries.clone(), &ty);
+                let TypeKind::Structure { field_ids, .. } = &ty else {
+                    unreachable!()
+                };
+
+                let mut field_values = Vec::new();
+                for id in 0..field_ids.len() {
+                    let name = field_ids.get(&id).unwrap();
+                    let value = self
+                        .const_value_to_llvm_value(None, fields.get(name).unwrap())
+                        .as_basic_value_enum();
+                    field_values.push(value);
+                }
+
+                Value::Structure {
+                    value: LLVM_CONTEXT.const_struct(&field_values, false),
+                    ty,
+                }
+            }
+        }
     }
 }

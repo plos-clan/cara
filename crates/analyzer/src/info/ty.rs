@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -12,6 +12,7 @@ pub enum Type {
     Ptr(Box<Self>),
     Array(Box<Self>, u32),
     Function(Box<Self>, Vec<Self>),
+    Structure(HashMap<String, Type>),
 }
 
 impl Type {
@@ -38,6 +39,10 @@ impl Type {
     pub fn is_function(&self) -> bool {
         matches!(self, Self::Function(_, _))
     }
+
+    pub fn is_structure(&self) -> bool {
+        matches!(self, Self::Structure(_))
+    }
 }
 
 impl Display for Type {
@@ -57,6 +62,13 @@ impl Display for Type {
                 }
                 write!(f, ") -> ")?;
                 write!(f, "{}", ret_ty)
+            }
+            Self::Structure(fields) => {
+                write!(f, "{{")?;
+                for (name, ty) in fields {
+                    write!(f, "{}: {}, ", name, ty)?;
+                }
+                write!(f, "}}")
             }
         }
     }

@@ -10,11 +10,10 @@ pub static CONST_EVAL_PROVIDER: LazyLock<Provider<DefId, Value>> =
 
 fn const_eval_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> Value {
     let mut eval_ctx = ConstEvalContext { ctx: ctx.clone() };
+    let ConstDef { initial_value, .. } = ctx.get_def(def_id).unwrap();
 
-    let ConstDef {
-        initial_value: ConstInitialValue::Exp(ConstExp { exp }),
-        ..
-    } = ctx.get_def(def_id).unwrap();
-
-    eval_ctx.visit_right_value(exp)
+    match initial_value {
+        ConstInitialValue::Exp(ConstExp { exp }) => eval_ctx.visit_right_value(exp),
+        ConstInitialValue::Type(ty) => eval_ctx.visit_type(ty),
+    }
 }

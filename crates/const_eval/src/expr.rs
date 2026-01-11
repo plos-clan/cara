@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use ast::{
     Array, BinaryOp, Block, Call, Deref, FunctionDef, Index, Number, Span, Type, TypeEnum, UnaryOp,
     Var, visitor::ExpVisitor,
 };
 
-use crate::{ConstEvalContext, info::Value, queries::CONST_EVAL_PROVIDER};
+use crate::{ConstEvalContext, ValueKind, info::Value, queries::CONST_EVAL_PROVIDER};
 
 impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     fn get_right_value(&self, left_value: Value) -> Value {
@@ -69,7 +69,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_var(&mut self, var: &Var) -> Value {
-        let name = var.path.path.join(".");
+        let name = var.path.path.join("::");
         let def_id = self.ctx.lookup_def_id(name).unwrap();
         self.ctx.query_cached(&CONST_EVAL_PROVIDER, def_id).unwrap()
     }
@@ -111,5 +111,33 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
 
     fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) -> Value {
         self.visit_right_value(&type_cast.exp)
+    }
+
+    fn visit_structure(&mut self, structure: &ast::Structure) -> Value {
+        let mut fields = HashMap::new();
+        for field in &structure.fields {
+            let value = self.visit_right_value(&field.1);
+            fields.insert(field.0.clone(), value);
+        }
+
+        let ValueKind::Type(ty) = self.visit_type(&structure.ty).kind() else {
+            unreachable!()
+        };
+
+        Value::new_structure(ty, fields)
+    }
+
+    fn visit_field_access(&mut self, field_access: &ast::FieldAccess) -> Value {
+        let lhs = self.visit_right_value(&field_access.lhs);
+        let ValueKind::Structure(_, structure) = lhs.kind() else {
+            unreachable!()
+        };
+        let Some((_, value)) = structure
+            .iter()
+            .find(|(name, _)| *name == &field_access.field)
+        else {
+            unreachable!()
+        };
+        value.clone()
     }
 }

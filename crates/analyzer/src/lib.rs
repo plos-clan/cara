@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
-use ast::{Exp, Span, TypeEnum};
+use ast::{Exp, Span, TypeEnum, visitor::ExpVisitor};
 pub use diagnostic::*;
 pub use info::*;
 use query::{DefId, QueryContext};
@@ -44,47 +44,59 @@ impl<'ctx> AnalyzerContext<'ctx> {
     }
 }
 
-fn get_analyzer_type(ty: &ast::Type) -> Type {
-    let mut result = match &ty.kind {
-        TypeEnum::Signed(width) => Type::Signed(*width),
-        TypeEnum::Unsigned(width) => Type::Unsigned(*width),
-        TypeEnum::Array(base, len) => get_analyzer_type(base).array(*len),
-        TypeEnum::Unit => Type::Unit,
-    };
-    for _ in 0..ty.ref_count {
-        result = result.pointer();
+impl AnalyzerContext<'_> {
+    fn try_infer(&mut self, exp: &Exp) -> Option<Type> {
+        match exp {
+            Exp::ProtoDef(proto) => {
+                let ret_ty = proto
+                    .return_type
+                    .as_ref()
+                    .map(|t| self.visit_type(t))
+                    .unwrap_or(Type::Unit);
+                let param_types = proto
+                    .params
+                    .iter()
+                    .map(|p| self.visit_type(&p.param_type))
+                    .collect::<Vec<_>>();
+                Some(Type::Function(Box::new(ret_ty), param_types))
+            }
+            Exp::Function(func) => {
+                let ret_ty = func
+                    .return_type
+                    .as_ref()
+                    .map(|t| self.visit_type(t))
+                    .unwrap_or(Type::Unit);
+                let param_types = func
+                    .params
+                    .iter()
+                    .map(|p| self.visit_type(&p.param_type))
+                    .collect::<Vec<_>>();
+                Some(Type::Function(Box::new(ret_ty), param_types))
+            }
+            _ => None,
+        }
     }
-    result
 }
 
-fn try_infer(exp: &Exp) -> Option<Type> {
-    match exp {
-        Exp::ProtoDef(proto) => {
-            let ret_ty = proto
-                .return_type
-                .as_ref()
-                .map(get_analyzer_type)
-                .unwrap_or(Type::Unit);
-            let param_types = proto
-                .params
-                .iter()
-                .map(|p| get_analyzer_type(&p.param_type))
-                .collect::<Vec<_>>();
-            Some(Type::Function(Box::new(ret_ty), param_types))
+impl AnalyzerContext<'_> {
+    fn visit_type(&mut self, ty: &ast::Type) -> Type {
+        let mut result = match &ty.kind {
+            TypeEnum::Signed(width) => Type::Signed(*width),
+            TypeEnum::Unsigned(width) => Type::Unsigned(*width),
+            TypeEnum::Array(base, len) => self.visit_type(base).array(*len),
+            TypeEnum::Unit => Type::Unit,
+            TypeEnum::Structure(struct_ty) => {
+                let mut fields = HashMap::new();
+                for (name, ty) in struct_ty.iter() {
+                    fields.insert(name.clone(), self.visit_type(ty));
+                }
+                Type::Structure(fields)
+            }
+            TypeEnum::Custom(var) => self.visit_var(var).into_type(),
+        };
+        for _ in 0..ty.ref_count {
+            result = result.pointer();
         }
-        Exp::Function(func) => {
-            let ret_ty = func
-                .return_type
-                .as_ref()
-                .map(get_analyzer_type)
-                .unwrap_or(Type::Unit);
-            let param_types = func
-                .params
-                .iter()
-                .map(|p| get_analyzer_type(&p.param_type))
-                .collect::<Vec<_>>();
-            Some(Type::Function(Box::new(ret_ty), param_types))
-        }
-        _ => None,
+        result
     }
 }

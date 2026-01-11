@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use ast::{FunctionDef, ProtoDef, Span, Type, TypeEnum};
 
@@ -7,6 +7,8 @@ pub enum ValueKind {
     Int(i64),
     Function(Arc<FunctionDef>),
     Proto(Arc<ProtoDef>),
+    Structure(Arc<Type>, HashMap<String, Value>),
+    Type(Arc<Type>),
     Unit,
 }
 
@@ -41,6 +43,20 @@ impl Value {
     pub fn new_unit() -> Self {
         Value {
             kind: ValueKind::Unit,
+            ty: None,
+        }
+    }
+
+    pub fn new_structure(ty: Arc<Type>, structure: HashMap<String, Value>) -> Self {
+        Value {
+            kind: ValueKind::Structure(ty, structure),
+            ty: None,
+        }
+    }
+
+    pub fn new_type(ty: Arc<Type>) -> Self {
+        Value {
+            kind: ValueKind::Type(ty),
             ty: None,
         }
     }
