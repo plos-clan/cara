@@ -153,7 +153,7 @@ impl<'v> Value<'v> {
                     let ptr = unsafe {
                         builder
                             .build_in_bounds_gep(
-                                *ty,
+                                ty,
                                 alloca,
                                 &[TypeKind::new_int(32).const_int(field_id as i64).as_int()],
                                 "",

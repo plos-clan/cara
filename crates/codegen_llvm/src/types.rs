@@ -12,7 +12,7 @@ pub(crate) fn const_eval_type_to_llvm_type(
     ty: &Arc<const_eval::TypeKind>,
 ) -> TypeKind<'static> {
     match ty.as_ref() {
-        const_eval::TypeKind::Primary(primary) => get_llvm_type(ctx, &primary),
+        const_eval::TypeKind::Primary(primary) => get_llvm_type(ctx, primary),
         const_eval::TypeKind::Ptr(primary) => const_eval_type_to_llvm_type(ctx, primary).new_ptr(),
     }
 }
@@ -52,7 +52,7 @@ pub(crate) fn get_llvm_type(ctx: Arc<QueryContext<'_>>, ty: &Type) -> TypeKind<'
                 .collect::<HashMap<_, _>>();
             let field_types = struct_ty
                 .values()
-                .map(|ty| Box::new(get_llvm_type_from_exp(ctx.clone(), ty)))
+                .map(|ty| get_llvm_type_from_exp(ctx.clone(), ty))
                 .collect::<Vec<_>>();
             let fields = field_types
                 .iter()

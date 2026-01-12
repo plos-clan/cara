@@ -57,6 +57,12 @@ impl<S: Symbol> SymbolTable<S> {
             .find_map(|scope| scope.iter().rev().find(|symbol| symbol.key() == key))
     }
 
+    pub fn lookup_current(&self, key: &S::Key) -> Option<&S> {
+        self.symbols
+            .last()
+            .and_then(|scope| scope.iter().rev().find(|symbol| symbol.key() == key))
+    }
+
     pub fn contains(&self, key: &S::Key) -> bool {
         self.symbols
             .iter()

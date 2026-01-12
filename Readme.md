@@ -13,6 +13,7 @@ Currently in development.
 - [ ] Structs and tuples.
 - [ ] Modules.
 - [ ] OOP.
+- [ ] Enums and matches.
 - [ ] Generics.
 - [ ] Light weight procedural macros.
 - [ ] LSP.

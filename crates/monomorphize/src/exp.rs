@@ -83,13 +83,10 @@ impl ExpVisitor<()> for MonomorphizeContext<'_> {
     }
 
     fn visit_type(&mut self, type_: &ast::Type) {
-        match &type_.kind {
-            TypeEnum::Structure(struct_ty, _) => {
-                for (_, ty) in struct_ty.iter() {
-                    self.visit_right_value(ty);
-                }
+        if let TypeEnum::Structure(struct_ty, _) = &type_.kind {
+            for (_, ty) in struct_ty.iter() {
+                self.visit_right_value(ty);
             }
-            _ => {}
         }
     }
 }

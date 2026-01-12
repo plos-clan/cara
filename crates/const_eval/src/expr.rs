@@ -119,7 +119,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     fn visit_structure(&mut self, structure: &ast::Structure) -> Value {
         let mut fields = HashMap::new();
         for field in &structure.fields {
-            let value = self.visit_right_value(&field.1);
+            let value = self.visit_right_value(field.1);
             fields.insert(field.0.clone(), value);
         }
 

@@ -33,7 +33,7 @@ peg::parser! {
 
         rule proto_def() -> ProtoDef
         = l: position!() "proto" __ abi: abi_kind() _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: expr() {t})? _ r: position!() {
-            ProtoDef { abi: abi, params, return_type, span: Span::new(l, r) }
+            ProtoDef { abi, params, return_type, span: Span::new(l, r) }
         }
 
         rule function_def() -> FunctionDef

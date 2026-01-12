@@ -258,7 +258,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
         let field_ptr = unsafe {
             self.builder.build_in_bounds_gep(
-                (*field_type).clone(),
+                field_type.clone(),
                 value,
                 &[TypeKind::new_int(64).const_int(field_id as i64).as_int()],
                 "",
@@ -268,7 +268,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 
         Value::Alloca {
             value: field_ptr,
-            value_ty: (*field_type).clone(),
+            value_ty: field_type.clone(),
         }
     }
 

@@ -27,7 +27,7 @@ pub enum TypeKind<'t> {
     Structure {
         ty: StructType<'t>,
         field_ids: HashMap<usize, String>,
-        field_types: Vec<Box<Self>>,
+        field_types: Vec<Self>,
     },
 }
 

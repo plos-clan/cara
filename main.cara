@@ -14,10 +14,18 @@ const scan_num = fn(num: *i64) {
 const TestType = struct {
     a: i64,
     b: i32,
+    
+    const dump_a = fn(self: *TestType) {
+        print_num(self.*.a);
+    };
+    
+    const dump_b = fn(self: *TestType) {
+        print_num(self.*.b);
+    };
 
     const dump_test_type = fn(self: *TestType) {
-        print_num(self.*.a);
-        print_num(self.*.b as i64);
+        dump_a(self);
+        dump_b(self);
     };
 };
 
