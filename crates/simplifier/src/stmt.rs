@@ -1,4 +1,4 @@
-use ast::{Block, BlockItem, Statement};
+use ast::{Block, BlockItem, Statement, VarDef};
 
 use crate::SimplifierContext;
 
@@ -22,8 +22,24 @@ impl SimplifierContext {
     fn simp_block_item(&mut self, item: BlockItem) -> BlockItem {
         match item {
             BlockItem::VarDef(var_def) => {
-                self.locals.push(var_def.name.clone());
-                BlockItem::VarDef(var_def)
+                let VarDef {
+                    name,
+                    var_type,
+                    initial_value,
+                    mutable,
+                    span,
+                } = var_def;
+                let var_type = var_type.map(|ty| self.simp_exp(ty));
+                let initial_value = self.simp_exp(initial_value);
+
+                self.locals.push(name.clone());
+                BlockItem::VarDef(VarDef {
+                    name,
+                    var_type,
+                    initial_value,
+                    mutable,
+                    span,
+                })
             }
             BlockItem::Statement(stmt) => BlockItem::Statement(match stmt {
                 Statement::Exp(exp) => Statement::Exp(self.simp_exp(exp)),

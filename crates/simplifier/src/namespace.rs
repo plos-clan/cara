@@ -39,26 +39,22 @@ impl NameSpaces {
 
     pub fn prefixed_name<S: AsRef<str>>(&self, raw_name: S) -> String {
         let mut name = raw_name.as_ref().to_string();
-        for layer in self.stack.iter().skip(1).rev() {
+        for layer in self.stack.iter().rev() {
             name = format!("{}::{}", layer, name);
         }
         name
     }
 
     pub fn prefixes(&self) -> Vec<String> {
-        let mut prefixes = Vec::new();
-        for layer in self.stack.iter().skip(1).rev() {
-            prefixes.push(layer.clone());
-        }
-        prefixes
+        self.stack.clone()
     }
 
-    pub fn lookup_current(&self, name: String) -> bool {
-        for symbol_tbl in self.symbols.iter().rev() {
-            if symbol_tbl.contains(&name) {
-                return true;
-            }
-        }
-        false
+    pub fn super_prefixes(&self) -> Vec<String> {
+        let len = self.stack.len();
+        self.stack.iter().cloned().take(len - 1).collect()
+    }
+
+    pub fn lookup_current(&self, name: &String) -> bool {
+        self.symbols.last().unwrap().contains(name)
     }
 }

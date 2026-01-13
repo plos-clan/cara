@@ -14,7 +14,7 @@ pub static COLLECT_CODEGEN_UNITS: LazyLock<Provider<(), Vec<DefId>>> =
     LazyLock::new(|| Provider::new(collect_codegen_units));
 
 fn collect_codegen_units(ctx: Arc<QueryContext<'_>>, (): ()) -> Vec<DefId> {
-    let initial = ctx.lookup_def_id("main").unwrap();
+    let initial = ctx.main_fn_id();
     let mut required = HashSet::new();
 
     required.insert(initial);

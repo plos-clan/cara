@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
             let ast = simplify(parser::parse(&source_code)?);
             let query_ctx = QueryContext::new(&ast);
 
-            let main_fn = query_ctx.lookup_def_id("main").unwrap();
+            let main_fn = query_ctx.main_fn_id();
             let mut result = query_ctx.query(&CHECK_CONST_DEF, main_fn).unwrap();
             result.dump(query_ctx.clone(), &source_code, &input_file);
 

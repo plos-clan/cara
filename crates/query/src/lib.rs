@@ -28,6 +28,12 @@ impl<'d> QueryContext<'d> {
 }
 
 impl<'d> QueryContext<'d> {
+    pub fn main_fn_id(&self) -> DefId {
+        self.lookup_def_id("::main").unwrap()
+    }
+}
+
+impl<'d> QueryContext<'d> {
     pub fn query<A: Send + Sync, R: Send + Sync>(
         self: &Arc<Self>,
         provider: &Provider<A, R>,

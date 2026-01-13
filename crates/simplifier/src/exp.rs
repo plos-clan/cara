@@ -278,20 +278,40 @@ impl SimplifierContext {
     }
 
     fn simp_var(&mut self, var: Var) -> Exp {
-        let Var { path, span } = var;
-        let start = path.path[0].clone();
-        let mut new_path = if self.globals.lookup_current(start) {
-            self.globals.prefixes()
-        } else {
-            vec![]
+        let Var {
+            path,
+            span: var_span,
+        } = var;
+        let Path {
+            mut path,
+            span: path_span,
+        } = path;
+        let start = path.remove(0);
+
+        let mut new_path = match start.as_str() {
+            "self" if path.len() != 0 => self.globals.prefixes(),
+            "super" => self.globals.super_prefixes(),
+            _ => {
+                let mut basic = if self.globals.lookup_current(&start) {
+                    self.globals.prefixes()
+                } else if self.locals.contains(&start) {
+                    vec![]
+                } else {
+                    vec!["".into()]
+                };
+                basic.push(start);
+                basic
+            }
         };
-        new_path.extend(path.path);
+        new_path.extend(path);
+        println!("{:?}", new_path);
+
         Exp::Var(Box::new(Var {
             path: Path {
                 path: new_path,
-                span: path.span,
+                span: path_span,
             },
-            span,
+            span: var_span,
         }))
     }
 }
