@@ -51,7 +51,7 @@ impl NameSpaces {
 
     pub fn super_prefixes(&self) -> Vec<String> {
         let len = self.stack.len();
-        self.stack.iter().cloned().take(len - 1).collect()
+        self.stack.iter().take(len - 1).cloned().collect()
     }
 
     pub fn lookup_current(&self, name: &String) -> bool {

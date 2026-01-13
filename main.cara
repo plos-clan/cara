@@ -16,16 +16,16 @@ const TestType = struct {
     b: i32,
     
     const dump_a = fn(self: *TestType) {
-        print_num(self.*.a);
+        super::print_num(self.*.a);
     };
     
     const dump_b = fn(self: *TestType) {
-        print_num(self.*.b);
+        super::print_num(self.*.b);
     };
 
     const dump_test_type = fn(self: *TestType) {
-        dump_a(self);
-        dump_b(self);
+        self::dump_a(self);
+        self::dump_b(self);
     };
 };
 

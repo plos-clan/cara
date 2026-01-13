@@ -289,7 +289,7 @@ impl SimplifierContext {
         let start = path.remove(0);
 
         let mut new_path = match start.as_str() {
-            "self" if path.len() != 0 => self.globals.prefixes(),
+            "self" if !path.is_empty() => self.globals.prefixes(),
             "super" => self.globals.super_prefixes(),
             _ => {
                 let mut basic = if self.globals.lookup_current(&start) {
@@ -304,7 +304,6 @@ impl SimplifierContext {
             }
         };
         new_path.extend(path);
-        println!("{:?}", new_path);
 
         Exp::Var(Box::new(Var {
             path: Path {
