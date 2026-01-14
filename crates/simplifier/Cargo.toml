@@ -5,4 +5,5 @@ edition.workspace = true
 
 [dependencies]
 ast.workspace = true
+parser.workspace = true
 symbol_table = { version = "0.1.0", path = "../symbol_table" }

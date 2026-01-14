@@ -160,6 +160,7 @@ dependencies = [
  "analyzer",
  "anyhow",
  "argh",
+ "ast",
  "codegen",
  "codegen_llvm",
  "parser",
@@ -602,6 +603,7 @@ name = "simplifier"
 version = "0.1.0"
 dependencies = [
  "ast",
+ "parser",
  "symbol_table",
 ]
 

@@ -105,7 +105,7 @@ impl Value {
     }
 
     pub fn ty(&self) -> Arc<TypeKind> {
-        let span = Span::new(0, 0);
+        let span = Span::default();
         self.ty.clone().unwrap_or({
             let kind = match self.kind {
                 ValueKind::Int(_) => TypeEnum::Signed(32),

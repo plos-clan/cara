@@ -55,6 +55,7 @@ pub enum Exp {
     TypeCast(Box<TypeCast>),
     Structure(Box<Structure>),
     FieldAccess(Box<FieldAccess>),
+    Module(Module),
 }
 
 impl Exp {
@@ -85,6 +86,7 @@ impl Exp {
             Self::TypeCast(type_cast) => type_cast.span,
             Self::Structure(structure) => structure.span,
             Self::FieldAccess(field_access) => field_access.span,
+            Self::Module(module) => module.span,
         }
     }
 }
@@ -197,6 +199,12 @@ pub struct Structure {
 pub struct FieldAccess {
     pub lhs: Exp,
     pub field: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Module {
+    pub path: String,
     pub span: Span,
 }
 

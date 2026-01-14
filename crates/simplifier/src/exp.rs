@@ -1,11 +1,13 @@
 use ast::{
     Array, Assign, BinaryOp, Call, Deref, Exp, FieldAccess, For, FunctionDef, GetAddr, IfExp,
-    Index, Loop, Param, Path, ProtoDef, Return, Span, Structure, TypeCast, UnaryOp, Var, While,
+    Index, Loop, Module, Param, Parser, Path, ProtoDef, Return, Span, Structure, Type, TypeCast,
+    UnaryOp, Var, While,
 };
+use parser::CaraParser;
 
 use crate::SimplifierContext;
 
-impl SimplifierContext {
+impl SimplifierContext<'_> {
     pub fn simp_exp(&mut self, exp: Exp) -> Exp {
         match exp {
             Exp::Type(ty) => {
@@ -33,6 +35,7 @@ impl SimplifierContext {
             Exp::While(while_exp) => self.simp_while(*while_exp),
             Exp::Exp(exp, _) => self.simp_exp(*exp),
             Exp::Unary(op, value, span) => self.simp_unary(op, *value, span),
+            Exp::Module(module) => Exp::Type(self.simp_module(module)),
             _ => exp,
         }
     }
@@ -297,7 +300,7 @@ impl SimplifierContext {
                 } else if self.locals.contains(&start) {
                     vec![]
                 } else {
-                    vec!["".into()]
+                    vec!["".into(), self.crate_name()]
                 };
                 basic.push(start);
                 basic
@@ -312,5 +315,13 @@ impl SimplifierContext {
             },
             span: var_span,
         }))
+    }
+
+    fn simp_module(&mut self, module: Module) -> Type {
+        let Module { path, span: _ } = module;
+
+        let file = self.file_table.register_file(path).unwrap();
+        let ast = CaraParser::new(self.file_table).parse(file).unwrap();
+        self.simp_type(ast)
     }
 }

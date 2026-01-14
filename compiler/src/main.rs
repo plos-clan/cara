@@ -1,13 +1,13 @@
 use std::{
     cell::LazyCell,
-    fs::File,
-    io::Read,
     process::{Command, exit},
 };
 
 use analyzer::queries::CHECK_CONST_DEF;
+use ast::{FileTable, Parser};
 use codegen::{BackendOptions, CodegenBackendBase, EmitOptions, OutputType, codegen};
 use codegen_llvm::LLVMBackend;
+use parser::CaraParser;
 use query::QueryContext;
 use simplifier::simplify;
 use tempfile::NamedTempFile;
@@ -29,6 +29,7 @@ fn main() -> anyhow::Result<()> {
                 optimize_level,
                 reloc_mode,
                 release,
+                crate_name,
             } = build;
 
             let temp_file = LazyCell::new(|| NamedTempFile::new().unwrap());
@@ -53,15 +54,17 @@ fn main() -> anyhow::Result<()> {
                 })
                 .build();
 
-            let mut source_code = String::new();
-            File::open(&input_file)?.read_to_string(&mut source_code)?;
+            let mut file_table = FileTable::new();
+            let file_id = file_table.register_file(input_file.clone())?;
 
-            let ast = simplify(parser::parse(&source_code)?);
-            let query_ctx = QueryContext::new(&ast);
+            let ast = CaraParser::new(&file_table).parse(file_id)?;
+            let ast = simplify(&mut file_table, crate_name.clone(), ast);
+
+            let query_ctx = QueryContext::new(crate_name, &ast);
 
             let main_fn = query_ctx.main_fn_id();
             let mut result = query_ctx.query(&CHECK_CONST_DEF, main_fn).unwrap();
-            result.dump(query_ctx.clone(), &source_code, &input_file);
+            result.dump(query_ctx.clone(), &file_table);
 
             if result.has_error() {
                 exit(-1);

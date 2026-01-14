@@ -29,14 +29,16 @@ const TestType = struct {
     };
 };
 
-const main = extern C[main] fn() -> i32 {
+const test_mod = mod "module.cara";
+
+const main = extern C[main] fn() -> i64 {
     let mut fib_num = 0 as i64;
     scan_num(&fib_num);
     let fib_result = fib(fib_num);
     print_num(fib_result);
     let test = TestType { a: fib_num, b: 0 };
     TestType::dump_test_type(&test);
-    return 0;
+    return test_mod::test();
 };
 
 const fib = fn(n: i64) -> i64 {

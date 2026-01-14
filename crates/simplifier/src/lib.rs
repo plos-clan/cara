@@ -1,4 +1,4 @@
-use ast::{CompUnit, ConstDef, ConstExp, ConstInitialValue, GlobalItem, Type, TypeEnum};
+use ast::{CompUnit, ConstDef, ConstExp, ConstInitialValue, FileTable, GlobalItem, Type, TypeEnum};
 use symbol_table::SymbolTable;
 
 use crate::namespace::NameSpaces;
@@ -7,47 +7,49 @@ mod exp;
 mod namespace;
 mod stmt;
 
-pub fn simplify(ast: CompUnit) -> CompUnit {
-    let mut ctx = SimplifierContext::new();
+pub fn simplify(file_table: &mut FileTable, crate_name: String, ast: Type) -> CompUnit {
+    let mut ctx = SimplifierContext::new(file_table, crate_name);
 
-    let CompUnit { global_items, span } = ast;
-    let mut new_items = Vec::new();
-    for item in global_items {
-        let new_item = ctx.simp_item(item);
-        new_items.push(new_item);
-    }
+    let ast = ctx.simp_type(ast);
 
     let SimplifierContext { extra_items, .. } = ctx;
 
-    new_items.extend(extra_items);
-
     CompUnit {
-        global_items: new_items,
-        span,
+        global_items: extra_items,
+        span: ast.span,
     }
 }
 
-struct SimplifierContext {
+struct SimplifierContext<'ctx> {
+    file_table: &'ctx mut FileTable,
+    crate_name: String,
     globals: NameSpaces,
     locals: SymbolTable<String>,
     extra_items: Vec<GlobalItem>,
 }
 
-impl SimplifierContext {
-    fn new() -> Self {
+impl<'ctx> SimplifierContext<'ctx> {
+    fn new(file_table: &'ctx mut FileTable, crate_name: String) -> Self {
         Self {
+            file_table,
+            crate_name: crate_name.clone(),
             globals: {
                 let mut globals = NameSpaces::new_root();
                 globals.push_layer();
+                globals.set_name_cache(crate_name);
                 globals
             },
             locals: SymbolTable::new(),
             extra_items: Vec::new(),
         }
     }
+
+    fn crate_name(&self) -> String {
+        self.crate_name.clone()
+    }
 }
 
-impl SimplifierContext {
+impl SimplifierContext<'_> {
     fn simp_item(&mut self, item: GlobalItem) -> GlobalItem {
         let GlobalItem::ConstDef(const_def) = item;
         self.simp_const_def(const_def)

@@ -37,6 +37,9 @@ pub struct BuildCommand {
     /// relocation mode.
     #[argh(option, default = "RelocMode::Default")]
     pub reloc_mode: RelocMode,
+    /// crate name.
+    #[argh(option, default = r#""main".into()"#)]
+    pub crate_name: String,
 }
 
 pub enum BuildResult {

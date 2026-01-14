@@ -13,6 +13,7 @@ codegen_llvm = { version = "0.1.0", path = "../crates/codegen_llvm" }
 tempfile = "3.24.0"
 analyzer.workspace = true
 simplifier = { version = "0.1.0", path = "../crates/simplifier" }
+ast.workspace = true
 
 [features]
 trace = ["parser/trace"]

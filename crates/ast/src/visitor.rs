@@ -51,6 +51,7 @@ pub trait ExpVisitor<V>: StatementVisitor<V> {
             Exp::Structure(structure) => self.visit_structure(structure),
             Exp::FieldAccess(field_access) => self.visit_field_access(field_access),
             Exp::Type(type_) => self.visit_type(type_),
+            Exp::Module(_) => unreachable!(),
         }
     }
 

@@ -1,21 +1,51 @@
 use ast::*;
 
-pub fn parse(input: &str) -> anyhow::Result<CompUnit> {
-    cara_parser::comp_unit(input).map_err(|e| e.into())
+pub struct CaraParser<'p> {
+    file_table: &'p FileTable,
+    current: usize,
+}
+
+impl<'p> CaraParser<'p> {
+    pub fn new(file_table: &'p FileTable) -> Self {
+        Self {
+            file_table,
+            current: 0,
+        }
+    }
+}
+
+impl<'p> Parser for CaraParser<'p> {
+    type Error = anyhow::Error;
+
+    fn file_table(&self) -> &FileTable {
+        self.file_table
+    }
+
+    fn current_file(&self) -> usize {
+        self.current
+    }
+
+    fn set_current_file(&mut self, file: usize) {
+        self.current = file;
+    }
+
+    fn parse_content(&self, content: &str) -> anyhow::Result<Type> {
+        cara_parser::module_root(content, self).map_err(|e| e.into())
+    }
 }
 
 macro_rules! binary_op_rule {
-    ($l: expr, $r: expr, $op_enum: ident) => {{
-        let s = Span::new($l.span().start(), $r.span().end());
+    ($parser: expr, $l: expr, $r: expr, $op_enum: ident) => {{
+        let s = $parser.span($l.span().start(), $r.span().end());
         Exp::Binary(BinaryOp::$op_enum, Box::new($l), Box::new($r), s)
     }};
 }
 
 peg::parser! {
-    grammar cara_parser() for str {
-        pub rule comp_unit() -> CompUnit
-        = l: position!() _ i: (global_item() ** _) _ r: position!() {
-            CompUnit { global_items: i, span: Span::new(l, r) }
+    grammar cara_parser(parser: &CaraParser) for str {
+        pub rule module_root() -> Type
+        = l: position!() _ i: struct_inner() _ r: position!() {
+            Type { kind: i, span: parser.span(l, r) }
         }
 
         rule global_item() -> GlobalItem
@@ -33,17 +63,17 @@ peg::parser! {
 
         rule proto_def() -> ProtoDef
         = l: position!() "proto" __ abi: abi_kind() _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: expr() {t})? _ r: position!() {
-            ProtoDef { abi, params, return_type, span: Span::new(l, r) }
+            ProtoDef { abi, params, return_type, span: parser.span(l, r) }
         }
 
         rule function_def() -> FunctionDef
         = l: position!() abi: ("extern" __ a: abi_kind() {a})? _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "->" _ t: expr() {t})? _ block: block() _ r: position!() {
-            FunctionDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, block, span: Span::new(l, r) }
+            FunctionDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, block, span: parser.span(l, r) }
         }
 
         rule const_def() -> ConstDef
         = l: position!() "const" __ name: identifier() _ "=" _ value: const_initial_value() _ ";" r: position!() {
-            ConstDef { name, initial_value: value, span: Span::new(l, r) }
+            ConstDef { name, initial_value: value, span: parser.span(l, r) }
         }
 
         rule const_initial_value() -> ConstInitialValue
@@ -53,7 +83,7 @@ peg::parser! {
 
         rule block() -> Block
         = l: position!() _ "{" _ items: (block_item() ** _) _ return_value: expr()? _ "}" _ r: position!() {
-            Block { items, return_value, span: Span::new(l, r) }
+            Block { items, return_value, span: parser.span(l, r) }
         }
 
         rule block_item() -> BlockItem
@@ -67,7 +97,7 @@ peg::parser! {
         = l: position!() _ "let" __ mutable: ("mut"?) _ name: identifier() _
                 var_type: (":" _ t: expr() {t} )? _
                 "=" _ value: expr() _ ";" r: position!() {
-            VarDef { name, var_type, initial_value: value, mutable: mutable.is_some(), span: Span::new(l, r) }
+            VarDef { name, var_type, initial_value: value, mutable: mutable.is_some(), span: parser.span(l, r) }
         }
 
         rule statement() -> Statement
@@ -84,12 +114,12 @@ peg::parser! {
 
         rule inline_asm() -> InlineAsm
         = l: position!() _ "asm" _ "{" _ asm: (string() ** ("," _)) _ ","? _ "}" _ r: position!() {
-            InlineAsm { asm, span: Span::new(l, r) }
+            InlineAsm { asm, span: parser.span(l, r) }
         }
 
         rule param() -> Param
         = l: position!() name: identifier() _ ":" _ ty: expr() r: position!() {
-            Param { name, param_type: ty, span: Span::new(l, r) }
+            Param { name, param_type: ty, span: parser.span(l, r) }
         }
 
         rule expr() -> Exp =
@@ -97,92 +127,92 @@ peg::parser! {
             f: function_def() { Exp::Function(Box::new(f)) } /
             precedence!{
                 l: position!() _ "return" __ rhs: @ {
-                    let span = Span::new(l, rhs.span().end());
+                    let span = parser.span(l, rhs.span().end());
                     Exp::Return(Box::new(Return { value: Some(rhs), span }))
                 }
                 l: position!() _ "return" __ ";" {
-                    let span = Span::new(l, l);
+                    let span = parser.span(l, l);
                     Exp::Return(Box::new(Return { value: None, span }))
                 }
                 lhs: (@) _ "=" _ rhs: @ {
-                    let span = Span::new(lhs.span().start(), rhs.span().end());
+                    let span = parser.span(lhs.span().start(), rhs.span().end());
                     Exp::Assign(Box::new(Assign { lhs, rhs, span }))
                 }
                 --
                 l: (@) _ "<" _ r: @ {
-                    binary_op_rule!(l, r, Lt)
+                    binary_op_rule!(parser, l, r, Lt)
                 }
                 l: (@) _ ">" _ r: @ {
-                    binary_op_rule!(l, r, Gt)
+                    binary_op_rule!(parser, l, r, Gt)
                 }
                 l: (@) _ "<=" _ r: @ {
-                    binary_op_rule!(l, r, Le)
+                    binary_op_rule!(parser, l, r, Le)
                 }
                 l: (@) _ ">=" _ r: @ {
-                    binary_op_rule!(l, r, Ge)
+                    binary_op_rule!(parser, l, r, Ge)
                 }
                 l: (@) _ "==" _ r: @ {
-                    binary_op_rule!(l, r, Eq)
+                    binary_op_rule!(parser, l, r, Eq)
                 }
                 l: (@) _ "!=" _ r: @ {
-                    binary_op_rule!(l, r, Ne)
+                    binary_op_rule!(parser, l, r, Ne)
                 }
                 --
                 l: (@) _ "&&" _ r: @ {
-                    binary_op_rule!(l, r, And)
+                    binary_op_rule!(parser, l, r, And)
                 }
                 l: (@) _ "||" _ r: @ {
-                    binary_op_rule!(l, r, Or)
+                    binary_op_rule!(parser, l, r, Or)
                 }
                 --
                 l: (@) _ "+" _ r: @ {
-                    binary_op_rule!(l, r, Add)
+                    binary_op_rule!(parser, l, r, Add)
                 }
                 l: (@) _ "-" _ r: @ {
-                    binary_op_rule!(l, r, Sub)
+                    binary_op_rule!(parser, l, r, Sub)
                 }
                 --
                 l: (@) _ "*" _ r: @ {
-                    binary_op_rule!(l, r, Mul)
+                    binary_op_rule!(parser, l, r, Mul)
                 }
                 l: (@) _ "/" _ r: @ {
-                    binary_op_rule!(l, r, Div)
+                    binary_op_rule!(parser, l, r, Div)
                 }
                 l: (@) _ "%" _ r: @ {
-                    binary_op_rule!(l, r, Mod)
+                    binary_op_rule!(parser, l, r, Mod)
                 }
                 --
                 s: position!() "+" _ r: (@) {
-                    let span = Span::new(s, r.span().end());
+                    let span = parser.span(s, r.span().end());
                     Exp::Unary(UnaryOp::Pos, Box::new(r), span)
                 }
                 s: position!() "-" _ r: (@) {
-                    let span = Span::new(s, r.span().end());
+                    let span = parser.span(s, r.span().end());
                     Exp::Unary(UnaryOp::Neg, Box::new(r), span)
                 }
                 s: position!() "!" _ r: (@) {
-                    let span = Span::new(s, r.span().end());
+                    let span = parser.span(s, r.span().end());
                     Exp::Unary(UnaryOp::Not, Box::new(r), span)
                 }
                 s: position!() "*" _ r: (@) {
-                    let span = Span::new(s, r.span().end());
+                    let span = parser.span(s, r.span().end());
                     Exp::Unary(UnaryOp::Ptr, Box::new(r), span)
                 }
                 --
                 l: (@) _ "<<" _ r: @ {
-                    binary_op_rule!(l, r, LShift)
+                    binary_op_rule!(parser, l, r, LShift)
                 }
                 l: (@) _ ">>" _ r: @ {
-                    binary_op_rule!(l, r, RShift)
+                    binary_op_rule!(parser, l, r, RShift)
                 }
                 --
                 l: (@) __ "as" __ t: @ {
-                    let span = Span::new(l.span().start(), t.span().end());
+                    let span = parser.span(l.span().start(), t.span().end());
                     Exp::TypeCast(Box::new(TypeCast { exp: l, ty: t, span }))
                 }
                 --
                 l: (@) _ "[" _ r: expr() _ "]" {
-                    let span = Span::new(l.span().start(), r.span().end());
+                    let span = parser.span(l.span().start(), r.span().end());
                     Exp::Index(Box::new(Index {
                         exp: l,
                         index: r,
@@ -191,14 +221,14 @@ peg::parser! {
                 }
                 --
                 l: position!() "&" _ e: (@) {
-                    let span = Span::new(l, e.span().end());
+                    let span = parser.span(l, e.span().end());
                     Exp::GetAddr(Box::new(GetAddr { exp: e, span }))
                 }
                 --
                 t: @ _ "{" _
                     fields: ((name: identifier() _ ":" _ value: expr() {(name, value)}) ** ("," _)) ","?
                 _ "}" r: position!() {
-                    let span = Span::new(t.span().start(), r);
+                    let span = parser.span(t.span().start(), r);
                     Exp::Structure(Box::new(Structure {
                         ty: Box::new(t),
                         fields: fields.into_iter().collect(),
@@ -207,14 +237,14 @@ peg::parser! {
                 }
                 --
                 l: @ "." "*" r: position!() {
-                    let span = Span::new(l.span().start(), r);
+                    let span = parser.span(l.span().start(), r);
                     Exp::Deref(Box::new(Deref {
                         exp: l,
                         span
                     }))
                 }
                 l: @ "." n: identifier() r: position!() {
-                    let span = Span::new(l.span().start(), r);
+                    let span = parser.span(l.span().start(), r);
                     Exp::FieldAccess(Box::new(FieldAccess {
                         lhs: l,
                         field: n,
@@ -223,7 +253,7 @@ peg::parser! {
                 }
                 --
                 l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: position!() {
-                    let span = Span::new(l.span().start(), r);
+                    let span = parser.span(l.span().start(), r);
                     Exp::Call(Box::new(Call {
                         func: l,
                         args,
@@ -231,13 +261,14 @@ peg::parser! {
                     }))
                 }
                 --
+                m: module() { Exp::Module(m) }
                 t: type_() { Exp::Type(t) }
                 f: for_exp() { Exp::For(Box::new(f)) }
                 l: loop_exp() { Exp::Loop(Box::new(l)) }
                 w: while_exp() { Exp::While(Box::new(w)) }
                 i: if_exp() { Exp::IfExp(Box::new(i)) }
                 l: position!() "(" _ ")" r: position!() {
-                    let span = Span::new(l, r);
+                    let span = parser.span(l, r);
                     Exp::Unit(span)
                 }
                 "(" _ e: expr() _ ")" {
@@ -260,7 +291,7 @@ peg::parser! {
                     end: e,
                     step,
                     body: b,
-                    span: Span::new(l, r)
+                    span: parser.span(l, r)
                 }
             }
 
@@ -268,7 +299,7 @@ peg::parser! {
             = l: position!() "loop" _ b: block() r: position!() {
                 Loop {
                     body: b,
-                    span: Span::new(l, r)
+                    span: parser.span(l, r)
                 }
             }
 
@@ -277,13 +308,13 @@ peg::parser! {
                 While {
                     condition: c,
                     body: b,
-                    span: Span::new(l, r)
+                    span: parser.span(l, r)
                 }
             }
 
         rule array() -> Array
             = l: position!() "[" _ values: (expr() ** ("," _)) _ "]" r: position!() {
-                Array::List(values, Span::new(l, r))
+                Array::List(values, parser.span(l, r))
             }
 
         rule if_exp() -> IfExp
@@ -294,7 +325,7 @@ peg::parser! {
                     then_branch: t,
                     else_branch: e,
                     else_if: None,
-                    span: Span::new(l, r)
+                    span: parser.span(l, r)
                 }
             } / l: position!() "if" __ c: expr() _ t: block() _
                 i: ("else" __ i: if_exp() {i})? r: position!() {
@@ -303,23 +334,28 @@ peg::parser! {
                     then_branch: t,
                     else_branch: None,
                     else_if: i.map(Box::new),
-                    span: Span::new(l, r)
+                    span: parser.span(l, r)
                 }
             }
 
+        rule module() -> Module
+             = s: position!() "mod" __ path: string() e: position!() {
+                 Module { path, span: parser.span(s, e) }
+        }
+
         rule string_wrapper() -> Exp
              = s: position!() string: string() e: position!() {
-            Exp::Str(string, Span::new(s, e))
+            Exp::Str(string, parser.span(s, e))
         }
 
         rule var() -> Var
               = s: position!() p: path() e: position!() {
-            Var { path: p, span: Span::new(s, e) }
+            Var { path: p, span: parser.span(s, e) }
         }
 
         rule number() -> Exp
             = l: position!() n:$(['0'..='9']+) w: ("i" w: width() {w})? r: position!() {
-                Exp::Number(Number { num: n.parse().unwrap(), ty: w.map(|w| (true, w)), span: Span::new(l, r) })
+                Exp::Number(Number { num: n.parse().unwrap(), ty: w.map(|w| (true, w)), span: parser.span(l, r) })
         }
 
         rule width() -> u32
@@ -331,7 +367,7 @@ peg::parser! {
             = s: position!() path:(identifier() ++ "::") e: position!() {
                 Path{
                     path,
-                    span: Span::new(s, e)
+                    span: parser.span(s, e)
                 }
             }
 
@@ -346,18 +382,21 @@ peg::parser! {
                 TypeEnum::Unit
             } / "[" _ inner: expr() _ ";" _ len: width() _ "]" {
                 TypeEnum::Array(Box::new(inner), len)
-            } / "struct" _ "{"
-                _ fields: (name: identifier() _ ":" _ ty: expr() { (name, ty) }) ** ("," _) ","? _
-                items: (global_item() ** _) _
-             "}" {
-                TypeEnum::Structure(fields.into_iter().collect(), items)
+            } / "struct" _ "{" _ i: struct_inner() _ "}" {
+                i
             }
+
+        rule struct_inner() -> TypeEnum
+             = fields: (name: identifier() _ ":" _ ty: expr() { (name, ty) }) ** ("," _) ","? _
+             items: (global_item() ** _) {
+                 TypeEnum::Structure(fields.into_iter().collect(), items)
+             }
 
         rule type_() -> Type
             = s: position!() kind: type_enum() e: position!() {
             Type {
                 kind,
-                span: Span::new(s, e),
+                span: parser.span(s, e),
             }
         }
 
@@ -367,7 +406,7 @@ peg::parser! {
           }
 
         rule keyword()
-          = ("const" / "fn" / "extern" / "mut" / "proto" / "let" / "struct"
+          = ("const" / "fn" / "extern" / "mut" / "proto" / "let" / "struct" / "mod"
             / "if" / "while" / "loop" / "for" / "in" / "else"
             / "i" n:$(['0'..='9']+) / "u" n:$(['0'..='9']+)) __
 

@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use annotate_snippets::{AnnotationKind, Group, Level, Renderer, Snippet, renderer::DecorStyle};
-use ast::Span;
+use ast::{FileTable, Span};
 use thiserror::Error;
 
 use crate::Type;
@@ -35,16 +35,14 @@ pub enum Warning {
 }
 
 pub(crate) struct DiagnosticDumper<'d> {
-    source_code: &'d str,
-    path: &'d str,
+    file_table: &'d FileTable,
     report: Vec<Group<'d>>,
 }
 
 impl<'d> DiagnosticDumper<'d> {
-    pub fn new(source_code: &'d str, path: &'d str) -> Self {
+    pub fn new(file_table: &'d FileTable) -> Self {
         Self {
-            source_code,
-            path,
+            file_table,
             report: Vec::new(),
         }
     }
@@ -56,17 +54,19 @@ impl DiagnosticDumper<'_> {
         I: Iterator<Item = &'a (T, Span)>,
     {
         for (error, span) in iter {
+            let file = span.file();
+            let path = self.file_table.get_path(file).unwrap();
+            let source_code = (*self.file_table.read_source(file).unwrap()).clone();
+
             let error = format!("{}", error);
 
             self.report.push(
                 Level::ERROR.primary_title(error.clone()).element(
-                    Snippet::source(self.source_code)
-                        .path(self.path)
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(span.start()..span.end())
-                                .label(error),
-                        ),
+                    Snippet::source(source_code).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(span.start()..span.end())
+                            .label(error),
+                    ),
                 ),
             );
         }

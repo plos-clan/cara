@@ -1,7 +1,7 @@
 use std::sync::{Arc, LazyLock};
 
 use ast::{
-    ConstExp, ConstInitialValue, Exp, Span,
+    ConstExp, ConstInitialValue, Exp, FileTable, Span,
     visitor::{BlockVisitor, ExpVisitor},
 };
 use query::{DefId, Provider, QueryContext};
@@ -29,7 +29,7 @@ impl AnalyzeResult {
         !self.warnings.is_empty()
     }
 
-    pub fn dump(&mut self, ctx: Arc<QueryContext<'_>>, source_code: &str, path: &str) {
+    pub fn dump(&mut self, ctx: Arc<QueryContext<'_>>, file_table: &FileTable) {
         for required in &self.required {
             let AnalyzeResult {
                 errors, warnings, ..
@@ -38,7 +38,7 @@ impl AnalyzeResult {
             self.warnings.extend(warnings);
         }
 
-        let mut dumper = DiagnosticDumper::new(source_code, path);
+        let mut dumper = DiagnosticDumper::new(file_table);
 
         dumper.add_iter(self.errors.iter());
         dumper.add_iter(self.warnings.iter());

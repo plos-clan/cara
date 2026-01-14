@@ -9,18 +9,20 @@ mod defs;
 mod provider;
 
 pub struct QueryContext<'d> {
+    crate_name: String,
     consts: BTreeMap<DefId, &'d ConstDef>,
     thread_pool: ThreadPool,
 }
 
 impl<'d> QueryContext<'d> {
-    pub fn new(ast: &'d CompUnit) -> Arc<Self> {
+    pub fn new(crate_name: String, ast: &'d CompUnit) -> Arc<Self> {
         let mut consts = BTreeMap::new();
         for GlobalItem::ConstDef(const_def) in &ast.global_items {
             let id = DefId(consts.len());
             consts.insert(id, const_def);
         }
         Arc::new(Self {
+            crate_name,
             consts,
             thread_pool: ThreadPoolBuilder::new().build().unwrap(),
         })
@@ -28,8 +30,13 @@ impl<'d> QueryContext<'d> {
 }
 
 impl<'d> QueryContext<'d> {
+    pub fn crate_name(&self) -> String {
+        self.crate_name.clone()
+    }
+
     pub fn main_fn_id(&self) -> DefId {
-        self.lookup_def_id("::main").unwrap()
+        self.lookup_def_id(format!("::{}::main", self.crate_name))
+            .unwrap()
     }
 }
 
