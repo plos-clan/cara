@@ -17,6 +17,7 @@ Currently in development.
 - [ ] Generics.
 - [ ] Light weight procedural macros.
 - [ ] LSP.
+- [ ] Incremental compilation
 
 ## Example
 [main.cara](main.cara)
