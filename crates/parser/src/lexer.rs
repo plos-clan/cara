@@ -54,15 +54,15 @@ impl Display for Sp {
 impl Parse for TokenStream {
     type PositionRepr = Sp;
 
-    fn start<'input>(&'input self) -> usize {
+    fn start(&self) -> usize {
         0
     }
 
-    fn is_eof<'input>(&'input self, p: usize) -> bool {
+    fn is_eof(&self, p: usize) -> bool {
         p >= self.tokens.len()
     }
 
-    fn position_repr<'input>(&'input self, p: usize) -> Self::PositionRepr {
+    fn position_repr(&self, p: usize) -> Self::PositionRepr {
         Sp(
             self.tokens
                 .get(p)
