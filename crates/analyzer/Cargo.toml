@@ -8,5 +8,5 @@ annotate-snippets = "0.12.10"
 anstream = "0.6.21"
 ast.workspace = true
 query.workspace = true
-symbol_table = { version = "0.1.0", path = "../symbol_table" }
+symbol_table = { path = "../symbol_table" }
 thiserror = "2.0.17"
