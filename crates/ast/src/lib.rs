@@ -18,13 +18,13 @@ pub trait Parser {
     fn set_current_file(&mut self, file: usize);
     fn current_file(&self) -> usize;
 
-    fn parse_content(&self, content: &str) -> Result<Type, Self::Error>;
+    fn parse_content(&self, content: Arc<String>) -> Result<Type, Self::Error>;
 
     fn parse(&mut self, file: usize) -> Result<Type, Self::Error> {
         self.set_current_file(file);
 
         let content = self.file_table().read_source(file).unwrap();
-        self.parse_content(content.as_ref())
+        self.parse_content(content)
     }
 
     fn span(&self, start: usize, end: usize) -> Span {

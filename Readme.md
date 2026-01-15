@@ -11,7 +11,7 @@ Currently in development.
 - [x] Type Casting.
 - [x] Powerful analyzer.
 - [ ] Structs and tuples.
-- [ ] Modules.
+- [x] Modules.
 - [ ] OOP.
 - [ ] Enums and matches.
 - [ ] Generics.

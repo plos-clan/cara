@@ -7,6 +7,9 @@ edition.workspace = true
 peg = "0.8.5"
 ast.workspace = true
 anyhow.workspace = true
+logos = "0.16.0"
+line-column = "0.2.4"
+unescaper = "0.1.8"
 
 [features]
 trace = ["peg/trace"]
