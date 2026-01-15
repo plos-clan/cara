@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: KyleMayes/install-llvm-action@v1
         with:
-          version: "13.0"
+          version: "21.1"
       - uses: actions/checkout@v4
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
