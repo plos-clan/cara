@@ -29,9 +29,9 @@ jobs:
             os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: KyleMayes/install-llvm-action@v1
+      - uses: ZhongRuoyu/setup-llvm@v0
         with:
-          version: "21.1"
+          llvm-version: 21
       - uses: actions/checkout@v4
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
