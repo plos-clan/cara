@@ -36,7 +36,7 @@ jobs:
           chmod +x llvm.sh
           # Set DPKG_FORCE to overwrite because the packages may conflict with the
           # pre-installed ones from the GitHub Actions runner image.
-          sudo env DPKG_FORCE=overwrite ./llvm.sh "21.1.7" all
+          sudo env DPKG_FORCE=overwrite ./llvm.sh "21" all
           echo "LLVM_SYS_210_PREFIX=/usr/lib/llvm-21" >> $GITHUB_ENV
           export PATH="/usr/lib/llvm-21/bin:$PATH"
       - name: Install Windows dependencies
