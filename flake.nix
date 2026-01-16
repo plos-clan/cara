@@ -27,8 +27,8 @@
           nativeBuildInputs = [ pkgs.pkg-config ];
           buildInputs = with pkgs; [
             clang
-            llvmPackages.bintools
-            llvmPackages.libllvm
+            llvmPackages_20.bintools
+            llvmPackages_20.libllvm
             libffi
             libxml2
             (rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
@@ -37,7 +37,7 @@
           CXXFLAGS_x86_64_unknown_linux_gnu = "-O2";
 
           # https://github.com/rust-lang/rust-bindgen#environment-variables
-          LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.llvmPackages_18.libclang.lib ];
+          LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.llvmPackages_20.libclang.lib ];
 
           shellHook = ''
             export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin

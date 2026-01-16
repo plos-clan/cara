@@ -36,20 +36,20 @@ jobs:
           chmod +x llvm.sh
           # Set DPKG_FORCE to overwrite because the packages may conflict with the
           # pre-installed ones from the GitHub Actions runner image.
-          sudo env DPKG_FORCE=overwrite ./llvm.sh "21" all
-          echo "LLVM_SYS_210_PREFIX=/usr/lib/llvm-21" >> $GITHUB_ENV
-          export PATH="/usr/lib/llvm-21/bin:$PATH"
+          sudo env DPKG_FORCE=overwrite ./llvm.sh "20" all
+          echo "LLVM_SYS_200_PREFIX=/usr/lib/llvm-20" >> $GITHUB_ENV
+          export PATH="/usr/lib/llvm-20/bin:$PATH"
       - name: Install Windows dependencies
         if: matrix.os == 'windows-latest'
         run: |
-          curl -L -o llvm.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.7/clang+llvm-21.1.7-x86_64-pc-windows-msvc.tar.xz
+          curl -L -o llvm.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-20.1.8/clang+llvm-20.1.8-x86_64-pc-windows-msvc.tar.xz
           7z x llvm.tar.xz
           7z x llvm.tar -oC:\
-          move "C:\clang+llvm-21.1.7-x86_64-pc-windows-msvc" "C:\llvm"
+          move "C:\clang+llvm-20.1.8-x86_64-pc-windows-msvc" "C:\llvm"
       - name: Set Windows LLVM environment
         if: matrix.os == 'windows-latest'
         run: |
-          echo "LLVM_SYS_210_PREFIX=C:\llvm" >> $env:GITHUB_ENV
+          echo "LLVM_SYS_200_PREFIX=C:\llvm" >> $env:GITHUB_ENV
           echo "PATH=C:\llvm\bin;$env:PATH" >> $env:GITHUB_ENV
         shell: pwsh
       - uses: actions/checkout@v4
