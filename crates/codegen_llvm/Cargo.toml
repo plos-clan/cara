@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 ast.workspace = true
 const_eval = { path = "../const_eval" }
-inkwell = { version = "0.8.0", features = ["llvm20-1"] }
+inkwell = { version = "0.8.0", features = ["llvm18-1"] }
 query.workspace = true
 uuid = { version = "1.19.0", features = ["v4"] }
 codegen.workspace = true
