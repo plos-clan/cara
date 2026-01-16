@@ -29,9 +29,25 @@ jobs:
             os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: ZhongRuoyu/setup-llvm@v0
-        with:
-          llvm-version: 21.1.7
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm-21-dev libclang-21-dev clang-21 libpolly-21-dev
+          echo "LLVM_SYS_210_PREFIX=/usr/lib/llvm-21" >> $GITHUB_ENV
+      - name: Install Windows dependencies
+        if: matrix.os == 'windows-latest'
+        run: |
+          curl -L -o llvm.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.7/clang+llvm-21.1.7-x86_64-pc-windows-msvc.tar.xz
+          7z x llvm.tar.xz
+          7z x llvm.tar -oC:\
+          move "C:\clang+llvm-21.1.7-x86_64-pc-windows-msvc" "C:\llvm"
+      - name: Set Windows LLVM environment
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "LLVM_SYS_210_PREFIX=C:\llvm" >> $env:GITHUB_ENV
+          echo "PATH=C:\llvm\bin;$env:PATH" >> $env:GITHUB_ENV
+        shell: pwsh
       - uses: actions/checkout@v4
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
