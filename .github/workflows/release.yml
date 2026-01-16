@@ -32,9 +32,13 @@ jobs:
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y llvm-21-dev libclang-21-dev clang-21 libpolly-21-dev
+          curl -fsSL https://apt.llvm.org/llvm.sh -o llvm.sh
+          chmod +x llvm.sh
+          # Set DPKG_FORCE to overwrite because the packages may conflict with the
+          # pre-installed ones from the GitHub Actions runner image.
+          sudo env DPKG_FORCE=overwrite ./llvm.sh "21.1.7" all
           echo "LLVM_SYS_210_PREFIX=/usr/lib/llvm-21" >> $GITHUB_ENV
+          export PATH="/usr/lib/llvm-21/bin:$PATH"
       - name: Install Windows dependencies
         if: matrix.os == 'windows-latest'
         run: |
