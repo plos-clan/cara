@@ -1,0 +1,6 @@
+[package]
+name = "type_infer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
