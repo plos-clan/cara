@@ -27,6 +27,12 @@ jobs:
             os: ubuntu-latest
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: universal-apple-darwin
+            os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Linux dependencies
@@ -39,6 +45,18 @@ jobs:
           sudo env DPKG_FORCE=overwrite ./llvm.sh "18" all
           echo "LLVM_SYS_180_PREFIX=/usr/lib/llvm-18" >> $GITHUB_ENV
           export PATH="/usr/lib/llvm-18/bin:$PATH"
+
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install llvm@18 zstd libffi
+          LLVM_PREFIX=$(brew --prefix llvm@18)
+          echo "LLVM_SYS_180_PREFIX=$LLVM_PREFIX" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$LLVM_PREFIX/lib:$(brew --prefix zstd)/lib:$(brew --prefix libffi)/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LLVM_PREFIX/lib:$(brew --prefix zstd)/lib:$(brew --prefix libffi)/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$LLVM_PREFIX/lib/pkgconfig:$(brew --prefix zstd)/lib/pkgconfig:$(brew --prefix libffi)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "RUSTFLAGS=-L$LLVM_PREFIX/lib" >> $GITHUB_ENV
+
       - name: Install Windows dependencies
         if: matrix.os == 'windows-latest'
         run: |
@@ -52,7 +70,9 @@ jobs:
           echo "LLVM_SYS_180_PREFIX=C:\llvm" >> $env:GITHUB_ENV
           echo "PATH=C:\llvm\bin;$env:PATH" >> $env:GITHUB_ENV
         shell: pwsh
+
       - uses: actions/checkout@v4
+
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
