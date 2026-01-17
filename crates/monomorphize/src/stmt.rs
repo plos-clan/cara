@@ -2,22 +2,22 @@ use ast::visitor::{ExpVisitor, StatementVisitor};
 
 use crate::MonomorphizeContext;
 
-impl StatementVisitor<()> for MonomorphizeContext<'_> {
+impl StatementVisitor<()> for MonomorphizeContext {
     fn visit_assign(&mut self, assign: &ast::Assign) {
-        self.visit_left_value(&assign.lhs);
-        self.visit_right_value(&assign.rhs);
+        self.visit_left_value(assign.lhs);
+        self.visit_right_value(assign.rhs);
     }
 
     fn visit_return(&mut self, return_stmt: &ast::Return) {
-        if let Some(value) = return_stmt.value.as_ref() {
+        if let Some(value) = return_stmt.value {
             self.visit_right_value(value);
         }
     }
 
     fn visit_for(&mut self, for_: &ast::For) {
-        self.visit_right_value(&for_.start);
-        self.visit_right_value(&for_.end);
-        if let Some(step) = &for_.step {
+        self.visit_right_value(for_.start);
+        self.visit_right_value(for_.end);
+        if let Some(step) = for_.step {
             self.visit_right_value(step);
         }
         self.locals.pre_push(for_.var.clone());
@@ -29,7 +29,7 @@ impl StatementVisitor<()> for MonomorphizeContext<'_> {
     }
 
     fn visit_while(&mut self, while_: &ast::While) {
-        self.visit_right_value(&while_.condition);
+        self.visit_right_value(while_.condition);
         self.visit_block(&while_.body);
     }
 

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ast::{Exp, Span, TypeEnum, visitor::ExpVisitor};
+use ast::{Exp, ExpId, Span, StructType, TypeEnum, visitor::ExpVisitor};
 pub use diagnostic::*;
 pub use info::*;
 use query::{DefId, QueryContext};
@@ -13,17 +13,17 @@ mod program;
 pub mod queries;
 mod stmt;
 
-struct AnalyzerContext<'ctx> {
+struct AnalyzerContext {
     symbols: SymbolTable<Symbol>,
-    ctx: Arc<QueryContext<'ctx>>,
+    ctx: Arc<QueryContext>,
     errors: Vec<(Error, Span)>,
     warnings: Vec<(Warning, Span)>,
     required: Vec<DefId>,
     ret_ty: Option<Type>,
 }
 
-impl<'ctx> AnalyzerContext<'ctx> {
-    fn new(ctx: Arc<QueryContext<'ctx>>, ret_ty: Option<Type>) -> Self {
+impl AnalyzerContext {
+    fn new(ctx: Arc<QueryContext>, ret_ty: Option<Type>) -> Self {
         Self {
             symbols: SymbolTable::new(),
             ctx,
@@ -44,19 +44,21 @@ impl<'ctx> AnalyzerContext<'ctx> {
     }
 }
 
-impl AnalyzerContext<'_> {
-    fn try_infer(&mut self, exp: &Exp) -> Option<Type> {
-        match exp {
+impl AnalyzerContext {
+    fn try_infer(&mut self, exp: ExpId) -> Option<Type> {
+        let ast_ctx = self.ctx.ast_ctx();
+        let exp_body = ast_ctx.exp(exp);
+        match exp_body {
             Exp::ProtoDef(proto) => {
                 let ret_ty = proto
                     .return_type
                     .as_ref()
-                    .map(|t| self.visit_right_value(t).into_type())
+                    .map(|t| self.visit_right_value(*t).into_type())
                     .unwrap_or(Type::Unit);
                 let param_types = proto
                     .params
                     .iter()
-                    .map(|p| self.visit_right_value(&p.param_type).into_type())
+                    .map(|p| self.visit_right_value(p.param_type).into_type())
                     .collect::<Vec<_>>();
                 Some(Type::Function(Box::new(ret_ty), param_types))
             }
@@ -64,12 +66,12 @@ impl AnalyzerContext<'_> {
                 let ret_ty = func
                     .return_type
                     .as_ref()
-                    .map(|t| self.visit_right_value(t).into_type())
+                    .map(|t| self.visit_right_value(*t).into_type())
                     .unwrap_or(Type::Unit);
                 let param_types = func
                     .params
                     .iter()
-                    .map(|p| self.visit_right_value(&p.param_type).into_type())
+                    .map(|p| self.visit_right_value(p.param_type).into_type())
                     .collect::<Vec<_>>();
                 Some(Type::Function(Box::new(ret_ty), param_types))
             }
@@ -78,19 +80,19 @@ impl AnalyzerContext<'_> {
     }
 }
 
-impl AnalyzerContext<'_> {
+impl AnalyzerContext {
     fn convert_type(&mut self, ty: &ast::Type) -> Type {
         match &ty.kind {
             TypeEnum::Signed(width) => Type::Signed(*width),
             TypeEnum::Unsigned(width) => Type::Unsigned(*width),
-            TypeEnum::Array(base, len) => self.visit_right_value(base).into_type().array(*len),
+            TypeEnum::Array(base, len) => self.visit_right_value(*base).into_type().array(*len),
             TypeEnum::Unit => Type::Unit,
-            TypeEnum::Structure(struct_ty, _) => {
-                let mut fields = HashMap::new();
-                for (name, ty) in struct_ty.iter() {
-                    fields.insert(name.clone(), self.visit_right_value(ty).into_type());
+            TypeEnum::Structure(StructType { fields, .. }) => {
+                let mut new_fields = HashMap::new();
+                for (name, &ty) in fields.iter() {
+                    new_fields.insert(name.clone(), self.visit_right_value(ty).into_type());
                 }
-                Type::Structure(fields)
+                Type::Structure(new_fields)
             }
         }
     }

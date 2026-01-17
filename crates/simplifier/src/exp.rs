@@ -1,77 +1,79 @@
 use ast::{
-    Array, Assign, BinaryOp, Call, Deref, Exp, FieldAccess, For, FunctionDef, GetAddr, IfExp,
-    Index, Loop, Module, Param, Parser, Path, ProtoDef, Return, Span, Structure, Type, TypeCast,
-    UnaryOp, Var, While,
+    Array, Assign, BinaryOp, Call, Deref, Exp, ExpId, FieldAccess, For, FunctionDef, GetAddr,
+    IfExp, Index, Loop, Module, Param, ParseContext, Path, ProtoDef, Return, Span, Structure, Type,
+    TypeCast, UnaryOp, Var, While,
 };
 use parser::CaraParser;
 
 use crate::SimplifierContext;
 
 impl SimplifierContext<'_> {
-    pub fn simp_exp(&mut self, exp: Exp) -> Exp {
-        match exp {
+    pub fn simp_exp(&mut self, exp: ExpId) -> ExpId {
+        let exp = self.get_exp(exp).unwrap();
+        let result = match exp {
             Exp::Type(ty) => {
                 let ty = self.simp_type(ty);
                 Exp::Type(ty)
             }
-            Exp::Array(array) => self.simp_array(*array),
-            Exp::Binary(op, lhs, rhs, span) => self.simp_binary(op, *lhs, *rhs, span),
-            Exp::Assign(assign) => self.simp_assign(*assign),
-            Exp::Block(block) => Exp::Block(Box::new(self.simp_block(*block))),
-            Exp::Call(call) => self.simp_call(*call),
-            Exp::Deref(deref) => self.simp_deref(*deref),
-            Exp::FieldAccess(field_access) => self.simp_field_access(*field_access),
-            Exp::For(for_loop) => self.simp_for(*for_loop),
-            Exp::IfExp(if_exp) => self.simp_if(*if_exp),
-            Exp::Function(func) => self.simp_function(*func),
-            Exp::GetAddr(get_addr) => self.simp_get_addr(*get_addr),
-            Exp::Index(index) => self.simp_index(*index),
-            Exp::Loop(loop_exp) => self.simp_loop(*loop_exp),
-            Exp::ProtoDef(proto_def) => self.simp_proto(*proto_def),
-            Exp::Return(ret) => self.simp_return(*ret),
-            Exp::Structure(structure) => self.simp_structure(*structure),
-            Exp::TypeCast(type_cast) => self.simp_type_cast(*type_cast),
-            Exp::Var(var) => self.simp_var(*var),
-            Exp::While(while_exp) => self.simp_while(*while_exp),
-            Exp::Exp(exp, _) => self.simp_exp(*exp),
-            Exp::Unary(op, value, span) => self.simp_unary(op, *value, span),
+            Exp::Array(array) => self.simp_array(array),
+            Exp::Binary(op, lhs, rhs, span) => self.simp_binary(op, lhs, rhs, span),
+            Exp::Assign(assign) => self.simp_assign(assign),
+            Exp::Block(block) => Exp::Block(self.simp_block(block)),
+            Exp::Call(call) => self.simp_call(call),
+            Exp::Deref(deref) => self.simp_deref(deref),
+            Exp::FieldAccess(field_access) => self.simp_field_access(field_access),
+            Exp::For(for_loop) => self.simp_for(for_loop),
+            Exp::IfExp(if_exp) => self.simp_if(if_exp),
+            Exp::Function(func) => self.simp_function(func),
+            Exp::GetAddr(get_addr) => self.simp_get_addr(get_addr),
+            Exp::Index(index) => self.simp_index(index),
+            Exp::Loop(loop_exp) => self.simp_loop(loop_exp),
+            Exp::ProtoDef(proto_def) => self.simp_proto(proto_def),
+            Exp::Return(ret) => self.simp_return(ret),
+            Exp::Structure(structure) => self.simp_structure(structure),
+            Exp::TypeCast(type_cast) => self.simp_type_cast(type_cast),
+            Exp::Var(var) => self.simp_var(var),
+            Exp::While(while_exp) => self.simp_while(while_exp),
+            Exp::Exp(exp, _) => return self.simp_exp(exp),
+            Exp::Unary(op, value, span) => self.simp_unary(op, value, span),
             Exp::Module(module) => Exp::Type(self.simp_module(module)),
             _ => exp,
-        }
+        };
+        self.insert_exp(result)
     }
 
     fn simp_array(&mut self, array: Array) -> Exp {
         match array {
-            Array::List(values, span) => Exp::Array(Box::new(Array::List(
+            Array::List(values, span) => Exp::Array(Array::List(
                 values
                     .into_iter()
                     .map(|value| self.simp_exp(value))
                     .collect(),
                 span,
-            ))),
+            )),
             _ => unreachable!(),
         }
     }
 
-    fn simp_binary(&mut self, op: BinaryOp, lhs: Exp, rhs: Exp, span: Span) -> Exp {
+    fn simp_binary(&mut self, op: BinaryOp, lhs: ExpId, rhs: ExpId, span: Span) -> Exp {
         let lhs = self.simp_exp(lhs);
         let rhs = self.simp_exp(rhs);
-        Exp::Binary(op, Box::new(lhs), Box::new(rhs), span)
+        Exp::Binary(op, lhs, rhs, span)
     }
 
-    fn simp_unary(&mut self, op: UnaryOp, value: Exp, span: Span) -> Exp {
+    fn simp_unary(&mut self, op: UnaryOp, value: ExpId, span: Span) -> Exp {
         let value = self.simp_exp(value);
-        Exp::Unary(op, Box::new(value), span)
+        Exp::Unary(op, value, span)
     }
 
     fn simp_assign(&mut self, assign: Assign) -> Exp {
         let lhs = self.simp_exp(assign.lhs);
         let rhs = self.simp_exp(assign.rhs);
-        Exp::Assign(Box::new(Assign {
+        Exp::Assign(Assign {
             lhs,
             rhs,
             span: assign.span,
-        }))
+        })
     }
 
     fn simp_call(&mut self, call: Call) -> Exp {
@@ -81,28 +83,28 @@ impl SimplifierContext<'_> {
             .into_iter()
             .map(|arg| self.simp_exp(arg))
             .collect();
-        Exp::Call(Box::new(Call {
+        Exp::Call(Call {
             func,
             args,
             span: call.span,
-        }))
+        })
     }
 
     fn simp_deref(&mut self, deref: Deref) -> Exp {
         let Deref { exp, span } = deref;
-        Exp::Deref(Box::new(Deref {
+        Exp::Deref(Deref {
             exp: self.simp_exp(exp),
             span,
-        }))
+        })
     }
 
     fn simp_field_access(&mut self, field: FieldAccess) -> Exp {
         let FieldAccess { lhs, field, span } = field;
-        Exp::FieldAccess(Box::new(FieldAccess {
+        Exp::FieldAccess(FieldAccess {
             lhs: self.simp_exp(lhs),
             field,
             span,
-        }))
+        })
     }
 
     fn simp_for(&mut self, for_exp: For) -> Exp {
@@ -121,14 +123,14 @@ impl SimplifierContext<'_> {
         self.locals.pre_push(var.clone());
         let body = self.simp_block(body);
 
-        Exp::For(Box::new(For {
+        Exp::For(For {
             var,
             start,
             end,
             step,
             body,
             span,
-        }))
+        })
     }
 
     fn simp_while(&mut self, while_exp: While) -> Exp {
@@ -141,11 +143,11 @@ impl SimplifierContext<'_> {
         let condition = self.simp_exp(condition);
         let body = self.simp_block(body);
 
-        Exp::While(Box::new(While {
+        Exp::While(While {
             condition,
             body,
             span,
-        }))
+        })
     }
 
     fn simp_if(&mut self, if_exp: IfExp) -> Exp {
@@ -161,17 +163,17 @@ impl SimplifierContext<'_> {
         let then_branch = self.simp_block(then_branch);
         let else_branch = else_branch.map(|exp| self.simp_block(exp));
         let else_if = else_if.map(|exp| self.simp_if(*exp)).map(|exp| match exp {
-            Exp::IfExp(v) => v,
+            Exp::IfExp(v) => Box::new(v),
             _ => unreachable!(),
         });
 
-        Exp::IfExp(Box::new(IfExp {
+        Exp::IfExp(IfExp {
             condition,
             then_branch,
             else_branch,
             else_if,
             span,
-        }))
+        })
     }
 
     fn simp_function(&mut self, func: FunctionDef) -> Exp {
@@ -192,13 +194,13 @@ impl SimplifierContext<'_> {
             .collect();
         let return_type = return_type.map(|ty| self.simp_exp(ty));
         let block = self.simp_block(block);
-        Exp::Function(Box::new(FunctionDef {
+        Exp::Function(FunctionDef {
             abi,
             params,
             return_type,
             block,
             span,
-        }))
+        })
     }
 
     fn simp_proto(&mut self, proto: ProtoDef) -> Exp {
@@ -213,12 +215,12 @@ impl SimplifierContext<'_> {
             .map(|param| self.simp_param(param))
             .collect();
         let return_type = return_type.map(|ty| self.simp_exp(ty));
-        Exp::ProtoDef(Box::new(ProtoDef {
+        Exp::ProtoDef(ProtoDef {
             abi,
             params,
             return_type,
             span,
-        }))
+        })
     }
 
     fn simp_param(&mut self, param: Param) -> Param {
@@ -238,31 +240,31 @@ impl SimplifierContext<'_> {
     fn simp_get_addr(&mut self, get_addr: GetAddr) -> Exp {
         let GetAddr { exp, span } = get_addr;
         let exp = self.simp_exp(exp);
-        Exp::GetAddr(Box::new(GetAddr { exp, span }))
+        Exp::GetAddr(GetAddr { exp, span })
     }
 
     fn simp_index(&mut self, index: Index) -> Exp {
         let Index { exp, index, span } = index;
         let exp = self.simp_exp(exp);
         let index = self.simp_exp(index);
-        Exp::Index(Box::new(Index { exp, index, span }))
+        Exp::Index(Index { exp, index, span })
     }
 
     fn simp_loop(&mut self, loop_exp: Loop) -> Exp {
         let Loop { body, span } = loop_exp;
         let body = self.simp_block(body);
-        Exp::Loop(Box::new(Loop { body, span }))
+        Exp::Loop(Loop { body, span })
     }
 
     fn simp_return(&mut self, return_exp: Return) -> Exp {
         let Return { value, span } = return_exp;
         let value = value.map(|value| self.simp_exp(value));
-        Exp::Return(Box::new(Return { value, span }))
+        Exp::Return(Return { value, span })
     }
 
     fn simp_structure(&mut self, structure: Structure) -> Exp {
         let Structure { ty, fields, span } = structure;
-        let ty = Box::new(self.simp_exp(*ty));
+        let ty = self.simp_exp(ty);
         let fields = fields
             .into_iter()
             .map(|(name, value)| {
@@ -270,14 +272,14 @@ impl SimplifierContext<'_> {
                 (name, value)
             })
             .collect();
-        Exp::Structure(Box::new(Structure { ty, fields, span }))
+        Exp::Structure(Structure { ty, fields, span })
     }
 
     fn simp_type_cast(&mut self, type_cast: TypeCast) -> Exp {
         let TypeCast { exp, ty, span } = type_cast;
         let exp = self.simp_exp(exp);
         let ty = self.simp_exp(ty);
-        Exp::TypeCast(Box::new(TypeCast { exp, ty, span }))
+        Exp::TypeCast(TypeCast { exp, ty, span })
     }
 
     fn simp_var(&mut self, var: Var) -> Exp {
@@ -295,10 +297,10 @@ impl SimplifierContext<'_> {
             "self" if !path.is_empty() => self.globals.prefixes(),
             "super" => self.globals.super_prefixes(),
             _ => {
-                let mut basic = if self.globals.lookup_current(&start) {
-                    self.globals.prefixes()
-                } else if self.locals.contains(&start) {
+                let mut basic = if self.locals.contains(&start) {
                     vec![]
+                } else if self.globals.lookup_current(&start) {
+                    self.globals.prefixes()
                 } else {
                     vec!["".into(), self.crate_name()]
                 };
@@ -307,21 +309,30 @@ impl SimplifierContext<'_> {
             }
         };
         new_path.extend(path);
-
-        Exp::Var(Box::new(Var {
+        Exp::Var(Var {
             path: Path {
                 path: new_path,
                 span: path_span,
             },
             span: var_span,
-        }))
+        })
     }
 
     fn simp_module(&mut self, module: Module) -> Type {
         let Module { path, span: _ } = module;
 
         let file = self.file_table.register_file(path).unwrap();
-        let ast = CaraParser::new(self.file_table).parse(file).unwrap();
-        self.simp_type(ast)
+        let ast = ParseContext::new(self.file_table, file)
+            .parse(CaraParser::default())
+            .unwrap();
+        let (exps, root) = ast.into_tuple();
+        self.origin_exps.push(exps);
+        let span = root.span;
+        let root = self.simp_struct_ty(root);
+        self.origin_exps.pop();
+        Type {
+            kind: ast::TypeEnum::Structure(root),
+            span,
+        }
     }
 }

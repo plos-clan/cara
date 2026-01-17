@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use ast::{Exp, FunctionDef, Param, ProtoDef, visitor::BlockVisitor};
+use ast::{ExpId, FunctionDef, Param, ProtoDef, visitor::BlockVisitor};
 use codegen::{
     BackendOptions, CodegenBackend, CodegenBackendBase, CodegenResult, EmitOptions, OutputType,
 };
@@ -62,11 +62,7 @@ impl CodegenBackendBase for LLVMBackend {
 }
 
 impl CodegenBackend for LLVMBackend {
-    fn codegen(
-        &self,
-        ctx: Arc<QueryContext<'_>>,
-        codegen_units: Vec<DefId>,
-    ) -> Box<dyn CodegenResult> {
+    fn codegen(&self, ctx: Arc<QueryContext>, codegen_units: Vec<DefId>) -> Box<dyn CodegenResult> {
         let (module, global_funcs) = Self::generate_defs(ctx.clone(), &codegen_units);
 
         let global_funcs = Arc::new(global_funcs);
@@ -82,7 +78,7 @@ impl CodegenBackend for LLVMBackend {
 
 impl LLVMBackend {
     fn generate_defs(
-        ctx: Arc<QueryContext<'_>>,
+        ctx: Arc<QueryContext>,
         codegen_units: &[DefId],
     ) -> (Module<'static>, FunctionMap) {
         let mut global_funcs = BTreeMap::new();
@@ -149,18 +145,18 @@ impl LLVMBackend {
 
     #[inline(always)]
     fn llvm_fn_sig(
-        ctx: Arc<QueryContext<'_>>,
+        ctx: Arc<QueryContext>,
         params: &[Param],
-        return_type: &Option<Exp>,
+        return_type: &Option<ExpId>,
     ) -> (TypeKind<'static>, TypeKind<'static>) {
         let mut param_types = Vec::new();
         for param in params {
-            param_types.push(get_llvm_type_from_exp(ctx.clone(), &param.param_type));
+            param_types.push(get_llvm_type_from_exp(ctx.clone(), param.param_type));
         }
 
         let return_type = return_type
             .as_ref()
-            .map(|return_type| get_llvm_type_from_exp(ctx.clone(), return_type))
+            .map(|return_type| get_llvm_type_from_exp(ctx.clone(), *return_type))
             .unwrap_or(TypeKind::new_unit());
         let function_type = return_type.function(param_types);
 
@@ -168,7 +164,7 @@ impl LLVMBackend {
     }
 
     fn codegen_item(
-        ctx: Arc<QueryContext<'_>>,
+        ctx: Arc<QueryContext>,
         def_id: DefId,
         global_funcs: Arc<FunctionMap>,
         module: Arc<Module<'static>>,
@@ -199,7 +195,7 @@ impl LLVMBackend {
         };
 
         for (id, param) in params.iter().enumerate() {
-            let ty = get_llvm_type_from_exp(ctx.clone(), &param.param_type);
+            let ty = get_llvm_type_from_exp(ctx.clone(), param.param_type);
 
             let ptr = visitor_ctx.create_entry_bb_alloca(&param.name, ty);
             visitor_ctx
@@ -329,7 +325,7 @@ struct VisitorCtx<'v> {
     builder: Builder<'v>,
     symbols: SymbolTable<Symbol<'v>>,
     module: Arc<Module<'static>>,
-    queries: Arc<QueryContext<'v>>,
+    queries: Arc<QueryContext>,
     current_fn: Value<'v>,
     global_funcs: Arc<BTreeMap<DefId, Value<'v>>>,
 }

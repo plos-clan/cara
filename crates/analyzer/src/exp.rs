@@ -16,7 +16,11 @@ use crate::{
     queries::{AnalyzeResult, CHECK_CONST_DEF},
 };
 
-impl ExpVisitor<Value> for AnalyzerContext<'_> {
+impl ExpVisitor<Value> for AnalyzerContext {
+    fn ast_ctx(&self) -> std::sync::Arc<ast::AstContext> {
+        self.ctx.ast_ctx()
+    }
+
     fn get_right_value(&self, left_value: Value) -> Value {
         left_value
     }
@@ -26,7 +30,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
     }
 
     fn visit_get_addr(&mut self, get_addr: &ast::GetAddr) -> Value {
-        let ty = self.visit_right_value(&get_addr.exp).into_type();
+        let ty = self.visit_right_value(get_addr.exp).into_type();
         Value::new(ty.pointer())
     }
 
@@ -35,7 +39,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
             Array::List(values, span) => {
                 let types = values
                     .iter()
-                    .map(|v| self.visit_right_value(v))
+                    .map(|v| self.visit_right_value(*v))
                     .collect::<Vec<_>>();
                 let should_be_type = types[0].clone();
                 for type_ in types.iter().skip(1) {
@@ -87,11 +91,11 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
     }
 
     fn visit_call(&mut self, call: &ast::Call) -> Value {
-        let func = self.visit_right_value(&call.func);
+        let func = self.visit_right_value(call.func);
         if let Type::Function(ret_ty, param_types) = func.type_() {
             for (arg, param_ty) in zip(call.args.iter(), param_types.iter()) {
                 let param_ty = param_ty.clone();
-                let arg_ty = self.visit_right_value(arg).into_type();
+                let arg_ty = self.visit_right_value(*arg).into_type();
                 if arg_ty != param_ty {
                     self.error_at(Error::TypeMismatch(param_ty, arg_ty), arg.span());
                 }
@@ -105,7 +109,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
     }
 
     fn visit_deref(&mut self, deref: &ast::Deref) -> Value {
-        let value = self.visit_right_value(&deref.exp);
+        let value = self.visit_right_value(deref.exp);
         let type_ = value.type_();
         if let Type::Ptr(target) = type_ {
             Value::new(target.deref().clone())
@@ -120,8 +124,8 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
     }
 
     fn visit_index(&mut self, index: &ast::Index) -> Value {
-        let array = self.visit_left_value(&index.exp);
-        let index_value = self.visit_right_value(&index.index);
+        let array = self.visit_left_value(index.exp);
+        let index_value = self.visit_right_value(index.index);
 
         if !matches!(index_value.type_(), Type::Signed(_) | Type::Unsigned(_)) {
             self.error_at(
@@ -162,9 +166,9 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
 
     fn visit_type_cast(&mut self, type_cast: &TypeCast) -> Value {
         let TypeCast { exp, ty, span } = type_cast;
-        let value = self.visit_right_value(exp);
+        let value = self.visit_right_value(*exp);
         let value_type = value.type_();
-        let target = self.visit_right_value(ty).into_type();
+        let target = self.visit_right_value(*ty).into_type();
 
         if *value_type == target {
             return value;
@@ -230,7 +234,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
                 let ctx = self.ctx.clone();
                 let const_def = ctx.get_def(def_id).unwrap();
                 match &const_def.initial_value {
-                    ConstInitialValue::Exp(exp) => self.try_infer(&exp.exp),
+                    ConstInitialValue::Exp(exp) => self.try_infer(exp.exp),
                 }
             } {
                 self.required.push(def_id);
@@ -257,13 +261,13 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
     }
 
     fn visit_structure(&mut self, structure: &ast::Structure) -> Value {
-        let ty = self.visit_right_value(&structure.ty).into_type();
+        let ty = self.visit_right_value(structure.ty).into_type();
         let Type::Structure(field_types) = &ty else {
             self.error_at(Error::ExpectedStructType(ty), structure.ty.span());
             return Value::default();
         };
 
-        for (field_name, field_exp) in structure.fields.iter() {
+        for (field_name, &field_exp) in structure.fields.iter() {
             let field_value = self.visit_right_value(field_exp);
             let field_type = field_value.into_type();
             let Some(should_be_type) = field_types.get(field_name) else {
@@ -282,7 +286,7 @@ impl ExpVisitor<Value> for AnalyzerContext<'_> {
     }
 
     fn visit_field_access(&mut self, field_access: &ast::FieldAccess) -> Value {
-        let ty = self.visit_right_value(&field_access.lhs).into_type();
+        let ty = self.visit_right_value(field_access.lhs).into_type();
         let Type::Structure(field_types) = &ty else {
             self.error_at(Error::ExpectedStructType(ty), field_access.lhs.span());
             return Value::default();

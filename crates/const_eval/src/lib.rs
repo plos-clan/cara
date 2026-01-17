@@ -9,6 +9,6 @@ mod info;
 pub mod queries;
 mod stmt;
 
-struct ConstEvalContext<'c> {
-    ctx: Arc<QueryContext<'c>>,
+struct ConstEvalContext {
+    ctx: Arc<QueryContext>,
 }

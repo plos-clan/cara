@@ -2,7 +2,7 @@ use ast::visitor::{BlockVisitor, ExpVisitor};
 
 use crate::{AnalyzerContext, Error, Symbol, Value};
 
-impl BlockVisitor<Value> for AnalyzerContext<'_> {
+impl BlockVisitor<Value> for AnalyzerContext {
     fn on_enter_block(&mut self) {
         self.symbols.push_scope();
     }
@@ -14,11 +14,11 @@ impl BlockVisitor<Value> for AnalyzerContext<'_> {
     fn visit_inline_asm(&mut self, _inline_asm: &ast::InlineAsm) {}
 
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
-        let value = self.visit_right_value(&var_def.initial_value);
+        let value = self.visit_right_value(var_def.initial_value);
         if let Some(should_be_type) = var_def
             .var_type
             .as_ref()
-            .map(|ty| self.visit_right_value(ty).into_type())
+            .map(|ty| self.visit_right_value(*ty).into_type())
             && should_be_type != *value.type_()
         {
             self.error_at(

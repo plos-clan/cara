@@ -5,14 +5,14 @@ use ast::{
 
 use crate::{AnalyzerContext, Error, Symbol, Type, Value};
 
-impl StatementVisitor<Value> for AnalyzerContext<'_> {
+impl StatementVisitor<Value> for AnalyzerContext {
     fn visit_assign(&mut self, assign: &Assign) -> Value {
         let Assign { lhs, rhs, .. } = assign;
 
-        let lhs_val = self.visit_left_value(lhs);
+        let lhs_val = self.visit_left_value(*lhs);
         let lhs_type = lhs_val.into_type();
 
-        let rhs_val = self.visit_right_value(rhs);
+        let rhs_val = self.visit_right_value(*rhs);
         let rhs_type = rhs_val.into_type();
 
         if lhs_type != rhs_type {
@@ -31,9 +31,9 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
             ..
         } = for_;
 
-        let start_val = self.visit_right_value(start);
+        let start_val = self.visit_right_value(*start);
         let start_type = start_val.clone().into_type();
-        let end_val = self.visit_right_value(end);
+        let end_val = self.visit_right_value(*end);
         let end_type = end_val.into_type();
 
         if start_type != end_type {
@@ -43,7 +43,7 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
             );
         }
 
-        if let Some(step_val) = step.as_ref().map(|s| self.visit_right_value(s)) {
+        if let Some(step_val) = step.as_ref().map(|s| self.visit_right_value(*s)) {
             let step_type = step_val.into_type();
             if step_type != start_type {
                 self.error_at(
@@ -76,7 +76,7 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
             ..
         } = if_exp;
 
-        let condition_ty = self.visit_right_value(condition).into_type();
+        let condition_ty = self.visit_right_value(*condition).into_type();
         if !condition_ty.is_bool() {
             self.error_at(
                 Error::TypeMismatch(Type::Bool, condition_ty),
@@ -117,7 +117,7 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
         let ty = return_stmt
             .value
             .as_ref()
-            .map(|v| self.visit_right_value(v).into_type())
+            .map(|v| self.visit_right_value(*v).into_type())
             .unwrap_or(Type::Unit);
         let Some(should_be_ty) = self.ret_ty.as_ref() else {
             return Value::default();
@@ -140,7 +140,7 @@ impl StatementVisitor<Value> for AnalyzerContext<'_> {
             condition, body, ..
         } = while_;
 
-        let condition_ty = self.visit_right_value(condition).into_type();
+        let condition_ty = self.visit_right_value(*condition).into_type();
         if !condition_ty.is_bool() {
             self.error_at(
                 Error::TypeMismatch(Type::Bool, condition_ty),

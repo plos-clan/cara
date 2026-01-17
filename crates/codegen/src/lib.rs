@@ -60,14 +60,10 @@ pub trait CodegenBackendBase {
 }
 
 pub trait CodegenBackend {
-    fn codegen(
-        &self,
-        ctx: Arc<QueryContext<'_>>,
-        codegen_units: Vec<DefId>,
-    ) -> Box<dyn CodegenResult>;
+    fn codegen(&self, ctx: Arc<QueryContext>, codegen_units: Vec<DefId>) -> Box<dyn CodegenResult>;
 }
 
-pub fn codegen(ctx: Arc<QueryContext<'_>>, backend: &dyn CodegenBackend) -> Box<dyn CodegenResult> {
+pub fn codegen(ctx: Arc<QueryContext>, backend: &dyn CodegenBackend) -> Box<dyn CodegenResult> {
     let codegen_units = ctx.query_cached(&COLLECT_CODEGEN_UNITS, ()).unwrap();
 
     backend.codegen(ctx, codegen_units)

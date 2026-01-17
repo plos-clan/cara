@@ -15,7 +15,7 @@ impl<'v> BlockVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
-        let value = self.visit_right_value(&var_def.initial_value);
+        let value = self.visit_right_value(var_def.initial_value);
         let alloca = self.create_entry_bb_alloca_with_init(&var_def.name, value);
 
         self.symbols.push(Symbol::Var(var_def.name.clone(), alloca));

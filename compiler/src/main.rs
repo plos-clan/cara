@@ -1,10 +1,11 @@
 use std::{
     cell::LazyCell,
     process::{Command, exit},
+    sync::Arc,
 };
 
 use analyzer::queries::CHECK_CONST_DEF;
-use ast::{FileTable, Parser};
+use ast::{FileTable, ParseContext};
 use codegen::{BackendOptions, CodegenBackendBase, EmitOptions, OutputType, codegen};
 use codegen_llvm::LLVMBackend;
 use parser::CaraParser;
@@ -57,10 +58,10 @@ fn main() -> anyhow::Result<()> {
             let mut file_table = FileTable::new();
             let file_id = file_table.register_file(input_file.clone())?;
 
-            let ast = CaraParser::new(&file_table).parse(file_id)?;
+            let ast = ParseContext::new(&file_table, file_id).parse(CaraParser::new())?;
             let ast = simplify(&mut file_table, crate_name.clone(), ast);
 
-            let query_ctx = QueryContext::new(crate_name, &ast);
+            let query_ctx = QueryContext::new(crate_name, Arc::new(ast));
 
             let main_fn = query_ctx.main_fn_id();
             let mut result = query_ctx.query(&CHECK_CONST_DEF, main_fn).unwrap();

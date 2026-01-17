@@ -16,6 +16,10 @@ use crate::{
 };
 
 impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
+    fn ast_ctx(&self) -> std::sync::Arc<ast::AstContext> {
+        self.queries.ast_ctx()
+    }
+
     fn get_right_value(&self, left_value: Value<'v>) -> Value<'v> {
         left_value.as_right_value(&self.builder)
     }
@@ -79,12 +83,12 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_deref(&mut self, deref: &ast::Deref) -> Value<'v> {
-        self.visit_right_value(&deref.exp)
+        self.visit_right_value(deref.exp)
     }
 
     fn visit_index(&mut self, index_node: &ast::Index) -> Value<'v> {
-        let ptr_value = self.visit_left_value(&index_node.exp);
-        let index = self.visit_right_value(&index_node.index);
+        let ptr_value = self.visit_left_value(index_node.exp);
+        let index = self.visit_right_value(index_node.index);
 
         let pointee_ty = ptr_value.type_().derefed().derefed();
         let ptr = ptr_value.as_basic_value_enum().into_pointer_value();
@@ -141,13 +145,13 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_call(&mut self, call: &Call) -> Value<'v> {
-        let Value::Function(func, ret_ty) = self.visit_right_value(&call.func) else {
+        let Value::Function(func, ret_ty) = self.visit_right_value(call.func) else {
             unreachable!()
         };
         let args = call
             .args
             .iter()
-            .map(|arg| self.visit_right_value(arg).into())
+            .map(|arg| self.visit_right_value(*arg).into())
             .collect::<Vec<_>>();
         let result = self.builder.build_call(func, &args, "").unwrap();
 
@@ -159,7 +163,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
             Array::List(values, _) => {
                 let values = values
                     .iter()
-                    .map(|e| self.visit_right_value(e))
+                    .map(|e| self.visit_right_value(*e))
                     .collect::<Vec<_>>();
                 let ty = values[0].type_();
 
@@ -198,8 +202,8 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) -> Value<'v> {
-        let value = self.visit_right_value(&type_cast.exp);
-        let target_ty = self.visit_right_value(&type_cast.ty).as_type();
+        let value = self.visit_right_value(type_cast.exp);
+        let target_ty = self.visit_right_value(type_cast.ty).as_type();
 
         if value.is_int() && target_ty.is_int() {
             Value::Int(
@@ -236,7 +240,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_field_access(&mut self, field_access: &ast::FieldAccess) -> Value<'v> {
-        let value = self.visit_left_value(&field_access.lhs);
+        let value = self.visit_left_value(field_access.lhs);
         let value_ty = value.type_().derefed();
         let value = value.as_ptr();
 
@@ -273,7 +277,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_structure(&mut self, structure: &ast::Structure) -> Value<'v> {
-        let ty = self.visit_right_value(&structure.ty).as_type();
+        let ty = self.visit_right_value(structure.ty).as_type();
         let TypeKind::Structure { field_ids, .. } = &ty else {
             unreachable!()
         };
@@ -281,7 +285,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         let mut field_values = Vec::new();
         for id in 0..field_ids.len() {
             let name = field_ids[&id].clone();
-            let field_value = self.visit_right_value(&structure.fields[&name]);
+            let field_value = self.visit_right_value(structure.fields[&name]);
             field_values.push(field_value.as_basic_value_enum());
         }
 

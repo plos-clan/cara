@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use ast::{CompUnit, ConstDef, GlobalItem};
+use ast::{AstContext, ConstDef, GlobalItem};
 pub use defs::*;
 pub use provider::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
@@ -8,28 +8,30 @@ use rayon::{ThreadPool, ThreadPoolBuilder};
 mod defs;
 mod provider;
 
-pub struct QueryContext<'d> {
+pub struct QueryContext {
     crate_name: String,
-    consts: BTreeMap<DefId, &'d ConstDef>,
+    ast_ctx: Arc<AstContext>,
+    consts: BTreeMap<DefId, Arc<ConstDef>>,
     thread_pool: ThreadPool,
 }
 
-impl<'d> QueryContext<'d> {
-    pub fn new(crate_name: String, ast: &'d CompUnit) -> Arc<Self> {
+impl QueryContext {
+    pub fn new(crate_name: String, ast: Arc<AstContext>) -> Arc<Self> {
         let mut consts = BTreeMap::new();
-        for GlobalItem::ConstDef(const_def) in &ast.global_items {
+        for GlobalItem::ConstDef(const_def) in ast.root.members.iter() {
             let id = DefId(consts.len());
-            consts.insert(id, const_def);
+            consts.insert(id, const_def.clone());
         }
         Arc::new(Self {
             crate_name,
+            ast_ctx: ast,
             consts,
             thread_pool: ThreadPoolBuilder::new().build().unwrap(),
         })
     }
 }
 
-impl<'d> QueryContext<'d> {
+impl QueryContext {
     pub fn crate_name(&self) -> String {
         self.crate_name.clone()
     }
@@ -38,9 +40,13 @@ impl<'d> QueryContext<'d> {
         self.lookup_def_id(format!("::{}::main", self.crate_name))
             .unwrap()
     }
+
+    pub fn ast_ctx(&self) -> Arc<AstContext> {
+        self.ast_ctx.clone()
+    }
 }
 
-impl<'d> QueryContext<'d> {
+impl QueryContext {
     pub fn query<A: Send + Sync, R: Send + Sync>(
         self: &Arc<Self>,
         provider: &Provider<A, R>,
@@ -66,7 +72,7 @@ impl<'d> QueryContext<'d> {
     }
 }
 
-impl<'d> QueryContext<'d> {
+impl QueryContext {
     pub fn lookup_def_id<S: AsRef<str>>(&self, name: S) -> Option<DefId> {
         self.consts
             .keys()
@@ -74,8 +80,8 @@ impl<'d> QueryContext<'d> {
             .copied()
     }
 
-    pub fn get_def(&self, def_id: DefId) -> Option<&&ConstDef> {
-        self.consts.get(&def_id)
+    pub fn get_def(&self, def_id: DefId) -> Option<&ConstDef> {
+        self.consts.get(&def_id).map(|d| d.as_ref())
     }
 
     pub fn def_ids(&self) -> Vec<DefId> {

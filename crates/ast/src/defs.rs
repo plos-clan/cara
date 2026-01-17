@@ -3,8 +3,8 @@ use super::*;
 #[derive(Debug, Clone)]
 pub struct VarDef {
     pub name: String,
-    pub var_type: Option<Exp>,
-    pub initial_value: Exp,
+    pub var_type: Option<ExpId>,
+    pub initial_value: ExpId,
     pub mutable: bool,
     pub span: Span,
 }
@@ -31,7 +31,7 @@ pub enum Abi {
 pub struct ProtoDef {
     pub abi: Abi,
     pub params: Vec<Param>,
-    pub return_type: Option<Exp>,
+    pub return_type: Option<ExpId>,
     pub span: Span,
 }
 
@@ -39,7 +39,7 @@ pub struct ProtoDef {
 pub struct FunctionDef {
     pub abi: Abi,
     pub params: Vec<Param>,
-    pub return_type: Option<Exp>,
+    pub return_type: Option<ExpId>,
     pub block: Block,
     pub span: Span,
 }
@@ -47,6 +47,6 @@ pub struct FunctionDef {
 #[derive(Debug, Clone)]
 pub struct Param {
     pub name: String,
-    pub param_type: Exp,
+    pub param_type: ExpId,
     pub span: Span,
 }

@@ -13,7 +13,7 @@ use crate::MonomorphizeContext;
 pub static COLLECT_CODEGEN_UNITS: LazyLock<Provider<(), Vec<DefId>>> =
     LazyLock::new(|| Provider::new(collect_codegen_units));
 
-fn collect_codegen_units(ctx: Arc<QueryContext<'_>>, (): ()) -> Vec<DefId> {
+fn collect_codegen_units(ctx: Arc<QueryContext>, (): ()) -> Vec<DefId> {
     let initial = ctx.main_fn_id();
     let mut required = HashSet::new();
 
@@ -39,7 +39,7 @@ fn collect_codegen_units(ctx: Arc<QueryContext<'_>>, (): ()) -> Vec<DefId> {
     required.iter().copied().collect()
 }
 
-fn collect_required_items(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> Vec<DefId> {
+fn collect_required_items(ctx: Arc<QueryContext>, def_id: DefId) -> Vec<DefId> {
     let Some(ValueKind::Function(func_def)) = ctx
         .query_cached(&CONST_EVAL_PROVIDER, def_id)
         .map(|v| v.kind())

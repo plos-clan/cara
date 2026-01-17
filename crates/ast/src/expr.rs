@@ -4,7 +4,7 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct ConstExp {
-    pub exp: Exp,
+    pub exp: ExpId,
 }
 
 impl ConstExp {
@@ -15,8 +15,8 @@ impl ConstExp {
 
 #[derive(Debug, Clone)]
 pub enum Array {
-    List(Vec<Exp>, Span),
-    Template(Exp, ConstExp, Span),
+    List(Vec<ExpId>, Span),
+    Template(ExpId, ConstExp, Span),
 }
 
 impl Array {
@@ -30,31 +30,31 @@ impl Array {
 
 #[derive(Debug, Clone)]
 pub enum Exp {
-    Exp(Box<Exp>, Span),
+    Exp(ExpId, Span),
     Type(Type),
     Number(Number),
-    Var(Box<Var>),
+    Var(Var),
     Str(String, Span),
-    Unary(UnaryOp, Box<Exp>, Span),
-    Binary(BinaryOp, Box<Exp>, Box<Exp>, Span),
-    GetAddr(Box<GetAddr>),
-    Deref(Box<Deref>),
-    Index(Box<Index>),
-    Array(Box<Array>),
-    Call(Box<Call>),
-    Block(Box<Block>),
-    Function(Box<FunctionDef>),
-    Assign(Box<Assign>),
-    Return(Box<Return>),
-    IfExp(Box<IfExp>),
-    For(Box<For>),
-    Loop(Box<Loop>),
-    While(Box<While>),
-    ProtoDef(Box<ProtoDef>),
+    Unary(UnaryOp, ExpId, Span),
+    Binary(BinaryOp, ExpId, ExpId, Span),
+    GetAddr(GetAddr),
+    Deref(Deref),
+    Index(Index),
+    Array(Array),
+    Call(Call),
+    Block(Block),
+    Function(FunctionDef),
+    Assign(Assign),
+    Return(Return),
+    IfExp(IfExp),
+    For(For),
+    Loop(Loop),
+    While(While),
+    ProtoDef(ProtoDef),
     Unit(Span),
-    TypeCast(Box<TypeCast>),
-    Structure(Box<Structure>),
-    FieldAccess(Box<FieldAccess>),
+    TypeCast(TypeCast),
+    Structure(Structure),
+    FieldAccess(FieldAccess),
     Module(Module),
 }
 
@@ -93,15 +93,15 @@ impl Exp {
 
 #[derive(Debug, Clone)]
 pub struct TypeCast {
-    pub exp: Exp,
-    pub ty: Exp,
+    pub exp: ExpId,
+    pub ty: ExpId,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct Call {
-    pub func: Exp,
-    pub args: Vec<Exp>,
+    pub func: ExpId,
+    pub args: Vec<ExpId>,
     pub span: Span,
 }
 
@@ -113,20 +113,20 @@ pub struct Var {
 
 #[derive(Debug, Clone)]
 pub struct Index {
-    pub exp: Exp,
-    pub index: Exp,
+    pub exp: ExpId,
+    pub index: ExpId,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct Deref {
-    pub exp: Exp,
+    pub exp: ExpId,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct GetAddr {
-    pub exp: Exp,
+    pub exp: ExpId,
     pub span: Span,
 }
 
@@ -145,20 +145,20 @@ pub struct Path {
 
 #[derive(Debug, Clone)]
 pub struct Assign {
-    pub lhs: Exp,
-    pub rhs: Exp,
+    pub lhs: ExpId,
+    pub rhs: ExpId,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct Return {
-    pub value: Option<Exp>,
+    pub value: Option<ExpId>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct IfExp {
-    pub condition: Exp,
+    pub condition: ExpId,
     pub then_branch: Block,
     pub else_branch: Option<Block>,
     pub else_if: Option<Box<IfExp>>,
@@ -173,7 +173,7 @@ pub struct Loop {
 
 #[derive(Debug, Clone)]
 pub struct While {
-    pub condition: Exp,
+    pub condition: ExpId,
     pub body: Block,
     pub span: Span,
 }
@@ -181,23 +181,23 @@ pub struct While {
 #[derive(Debug, Clone)]
 pub struct For {
     pub var: String,
-    pub start: Exp,
-    pub end: Exp,
-    pub step: Option<Exp>,
+    pub start: ExpId,
+    pub end: ExpId,
+    pub step: Option<ExpId>,
     pub body: Block,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct Structure {
-    pub ty: Box<Exp>,
-    pub fields: HashMap<String, Exp>,
+    pub ty: ExpId,
+    pub fields: HashMap<String, ExpId>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct FieldAccess {
-    pub lhs: Exp,
+    pub lhs: ExpId,
     pub field: String,
     pub span: Span,
 }

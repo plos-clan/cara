@@ -14,8 +14,8 @@ use crate::{
 
 impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_assign(&mut self, assign: &Assign) -> Value<'v> {
-        let lhs = self.visit_left_value(&assign.lhs);
-        let rhs = self.visit_right_value(&assign.rhs);
+        let lhs = self.visit_left_value(assign.lhs);
+        let rhs = self.visit_right_value(assign.rhs);
 
         if let Value::Unit = rhs {
             return Value::Unit;
@@ -28,7 +28,7 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_return(&mut self, ret: &ast::Return) -> Value<'v> {
-        if let Some(value) = ret.value.as_ref() {
+        if let Some(value) = ret.value {
             let value = self.visit_right_value(value);
             self.builder
                 .build_return(if matches!(value, Value::Unit) {
@@ -45,7 +45,7 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_if_exp(&mut self, if_exp: &ast::IfExp) -> Value<'v> {
-        let condition = self.visit_right_value(&if_exp.condition).as_int();
+        let condition = self.visit_right_value(if_exp.condition).as_int();
         let condition = self
             .builder
             .build_bit_cast(condition, LLVM_CONTEXT.bool_type(), "")
@@ -109,11 +109,10 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
     fn visit_for(&mut self, for_: &ast::For) -> Value<'v> {
         let current_fn = self.current_fn.as_fn();
 
-        let start = self.visit_right_value(&for_.start);
-        let end = self.visit_right_value(&for_.end);
+        let start = self.visit_right_value(for_.start);
+        let end = self.visit_right_value(for_.end);
         let step = for_
             .step
-            .as_ref()
             .map(|step| self.visit_right_value(step))
             .unwrap_or(TypeKind::new_int(32).const_int(1));
 
@@ -176,7 +175,7 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
             .build_unconditional_branch(condition_block)
             .unwrap();
         self.builder.position_at_end(condition_block);
-        let condition = self.visit_right_value(&while_.condition);
+        let condition = self.visit_right_value(while_.condition);
         self.builder
             .build_conditional_branch(condition.as_int(), loop_block, end_block)
             .unwrap();

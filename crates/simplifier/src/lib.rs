@@ -1,4 +1,9 @@
-use ast::{CompUnit, ConstDef, ConstExp, ConstInitialValue, FileTable, GlobalItem, Type, TypeEnum};
+use std::{collections::HashMap, sync::Arc};
+
+use ast::{
+    AstContext, ConstDef, ConstExp, ConstInitialValue, Exp, ExpId, FileTable, GlobalItem,
+    StructType, Type, TypeEnum,
+};
 use symbol_table::SymbolTable;
 
 use crate::namespace::NameSpaces;
@@ -7,30 +12,44 @@ mod exp;
 mod namespace;
 mod stmt;
 
-pub fn simplify(file_table: &mut FileTable, crate_name: String, ast: Type) -> CompUnit {
-    let mut ctx = SimplifierContext::new(file_table, crate_name);
+pub fn simplify(file_table: &mut FileTable, crate_name: String, ast: AstContext) -> AstContext {
+    let (exps, root) = ast.into_tuple();
+    let mut ctx = SimplifierContext::new(file_table, crate_name, exps);
 
-    let ast = ctx.simp_type(ast);
+    let span = ctx.simp_struct_ty(root).span;
 
-    let SimplifierContext { extra_items, .. } = ctx;
+    let SimplifierContext {
+        extra_items, exps, ..
+    } = ctx;
 
-    CompUnit {
-        global_items: extra_items,
-        span: ast.span,
-    }
+    AstContext::new(
+        exps,
+        StructType {
+            fields: HashMap::new(),
+            members: extra_items,
+            span,
+        },
+    )
 }
 
 struct SimplifierContext<'ctx> {
+    origin_exps: Vec<HashMap<ExpId, Exp>>,
     file_table: &'ctx mut FileTable,
     crate_name: String,
     globals: NameSpaces,
     locals: SymbolTable<String>,
     extra_items: Vec<GlobalItem>,
+    exps: HashMap<ExpId, Exp>,
 }
 
 impl<'ctx> SimplifierContext<'ctx> {
-    fn new(file_table: &'ctx mut FileTable, crate_name: String) -> Self {
+    fn new(
+        file_table: &'ctx mut FileTable,
+        crate_name: String,
+        origin_exps: HashMap<ExpId, Exp>,
+    ) -> Self {
         Self {
+            origin_exps: vec![origin_exps],
             file_table,
             crate_name: crate_name.clone(),
             globals: {
@@ -41,11 +60,23 @@ impl<'ctx> SimplifierContext<'ctx> {
             },
             locals: SymbolTable::new(),
             extra_items: Vec::new(),
+            exps: HashMap::new(),
         }
     }
 
     fn crate_name(&self) -> String {
         self.crate_name.clone()
+    }
+
+    fn insert_exp(&mut self, exp: Exp) -> ExpId {
+        let id = self.exps.len() as u64;
+        let id = ExpId::new(id, exp.span());
+        self.exps.insert(id, exp);
+        id
+    }
+
+    fn get_exp(&mut self, id: ExpId) -> Option<Exp> {
+        self.origin_exps.last_mut().unwrap().remove(&id)
     }
 }
 
@@ -55,47 +86,68 @@ impl SimplifierContext<'_> {
         self.simp_const_def(const_def)
     }
 
-    fn simp_const_def(&mut self, const_def: ConstDef) -> GlobalItem {
+    fn simp_const_def(&mut self, const_def: Arc<ConstDef>) -> GlobalItem {
         let ConstDef {
             name: raw_name,
             initial_value,
             span,
-        } = const_def;
+        } = const_def.as_ref();
         let name = self.globals.prefixed_name(&raw_name);
         self.globals.set_name_cache(raw_name.clone());
         match initial_value {
             ConstInitialValue::Exp(exp) => {
                 let exp = self.simp_exp(exp.exp.clone());
-                GlobalItem::ConstDef(ConstDef {
+                GlobalItem::ConstDef(Arc::new(ConstDef {
                     name,
                     initial_value: ConstInitialValue::Exp(ConstExp { exp }),
-                    span,
-                })
+                    span: *span,
+                }))
             }
         }
     }
 
     fn simp_type(&mut self, ty: Type) -> Type {
-        if let TypeEnum::Structure(fields, items) = ty.kind {
-            self.globals.push_layer();
-            for item in &items {
-                match item {
-                    GlobalItem::ConstDef(ConstDef { name, .. }) => {
-                        self.globals.add_symbol(name.clone());
-                    }
-                }
-            }
-            for item in items {
-                let item = self.simp_item(item);
-                self.extra_items.push(item);
-            }
-            self.globals.pop_layer();
+        if let TypeEnum::Structure(struct_ty) = ty.kind {
+            let struct_ty = self.simp_struct_ty(struct_ty);
             Type {
-                kind: TypeEnum::Structure(fields, vec![]),
+                kind: TypeEnum::Structure(struct_ty),
                 span: ty.span,
             }
         } else {
             ty
+        }
+    }
+
+    fn simp_struct_ty(&mut self, struct_ty: StructType) -> StructType {
+        let StructType {
+            fields,
+            members,
+            span,
+        } = struct_ty;
+        let fields = fields
+            .into_iter()
+            .map(|(name, ty)| {
+                let ty = self.simp_exp(ty);
+                (name, ty)
+            })
+            .collect();
+        self.globals.push_layer();
+        for item in &members {
+            match item {
+                GlobalItem::ConstDef(const_def) => {
+                    self.globals.add_symbol(const_def.name.clone());
+                }
+            }
+        }
+        for item in members {
+            let item = self.simp_item(item);
+            self.extra_items.push(item);
+        }
+        self.globals.pop_layer();
+        StructType {
+            fields,
+            members: vec![],
+            span,
         }
     }
 }

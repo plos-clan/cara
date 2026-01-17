@@ -8,8 +8,8 @@ mod exp;
 pub mod queries;
 mod stmt;
 
-struct MonomorphizeContext<'ctx> {
-    ctx: Arc<QueryContext<'ctx>>,
+struct MonomorphizeContext {
+    ctx: Arc<QueryContext>,
     locals: SymbolTable<String>,
     required_items: Vec<DefId>,
 }

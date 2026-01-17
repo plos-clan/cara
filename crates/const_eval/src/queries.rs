@@ -8,11 +8,11 @@ use crate::{ConstEvalContext, info::Value};
 pub static CONST_EVAL_PROVIDER: LazyLock<Provider<DefId, Value>> =
     LazyLock::new(|| Provider::new(const_eval_provider));
 
-fn const_eval_provider(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> Value {
+fn const_eval_provider(ctx: Arc<QueryContext>, def_id: DefId) -> Value {
     let mut eval_ctx = ConstEvalContext { ctx: ctx.clone() };
     let ConstDef { initial_value, .. } = ctx.get_def(def_id).unwrap();
 
     match initial_value {
-        ConstInitialValue::Exp(ConstExp { exp }) => eval_ctx.visit_right_value(exp),
+        ConstInitialValue::Exp(ConstExp { exp }) => eval_ctx.visit_right_value(*exp),
     }
 }

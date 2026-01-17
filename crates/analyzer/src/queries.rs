@@ -29,7 +29,7 @@ impl AnalyzeResult {
         !self.warnings.is_empty()
     }
 
-    pub fn dump(&mut self, ctx: Arc<QueryContext<'_>>, file_table: &FileTable) {
+    pub fn dump(&mut self, ctx: Arc<QueryContext>, file_table: &FileTable) {
         for required in &self.required {
             let AnalyzeResult {
                 errors, warnings, ..
@@ -47,7 +47,7 @@ impl AnalyzeResult {
     }
 }
 
-fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
+fn check_const_def(ctx: Arc<QueryContext>, def_id: DefId) -> AnalyzeResult {
     let Some(const_def) = ctx.get_def(def_id) else {
         return AnalyzeResult::default();
     };
@@ -55,17 +55,19 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
 
     let result = match &const_def.initial_value {
         ConstInitialValue::Exp(ConstExp { exp }) => {
-            let ty = match exp {
+            let ast_ctx = ctx.ast_ctx();
+            let exp_body = ast_ctx.exp(*exp);
+            let ty = match exp_body {
                 Exp::ProtoDef(proto) => {
                     let ret_ty = proto
                         .return_type
                         .as_ref()
-                        .map(|t| analyzer_ctx.visit_right_value(t).into_type())
+                        .map(|t| analyzer_ctx.visit_right_value(*t).into_type())
                         .unwrap_or(Type::Unit);
                     let param_types = proto
                         .params
                         .iter()
-                        .map(|p| analyzer_ctx.visit_right_value(&p.param_type).into_type())
+                        .map(|p| analyzer_ctx.visit_right_value(p.param_type).into_type())
                         .collect::<Vec<_>>();
                     Type::Function(Box::new(ret_ty), param_types)
                 }
@@ -73,14 +75,12 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
                     let ret_ty = func
                         .return_type
                         .as_ref()
-                        .map(|t| analyzer_ctx.visit_right_value(t).into_type())
+                        .map(|t| analyzer_ctx.visit_right_value(*t).into_type())
                         .unwrap_or(Type::Unit);
                     analyzer_ctx.ret_ty = Some(ret_ty.clone());
                     let mut param_types = Vec::new();
                     for param in func.params.iter() {
-                        let ty = analyzer_ctx
-                            .visit_right_value(&param.param_type)
-                            .into_type();
+                        let ty = analyzer_ctx.visit_right_value(param.param_type).into_type();
                         param_types.push(ty.clone());
                         analyzer_ctx.symbols.pre_push(Symbol::Var(
                             param.name.clone(),
@@ -102,7 +102,7 @@ fn check_const_def(ctx: Arc<QueryContext<'_>>, def_id: DefId) -> AnalyzeResult {
                     }
                     Type::Function(Box::new(ret_ty), param_types)
                 }
-                _ => analyzer_ctx.visit_right_value(exp).into_type(),
+                _ => analyzer_ctx.visit_right_value(*exp).into_type(),
             };
             Value::new(ty)
         }

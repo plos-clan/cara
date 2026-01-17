@@ -1,4 +1,11 @@
-use std::{collections::HashMap, fs::File, io::Read, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    fs::File,
+    hash::{Hash, Hasher},
+    io::Read,
+    sync::Arc,
+};
 
 pub use defs::*;
 pub use expr::*;
@@ -11,25 +18,107 @@ mod program;
 mod types;
 pub mod visitor;
 
+#[derive(Debug, Clone, Copy)]
+pub struct ExpId(u64, Span);
+
+impl ExpId {
+    pub fn new(id: u64, span: Span) -> Self {
+        ExpId(id, span)
+    }
+
+    pub fn span(&self) -> Span {
+        self.1
+    }
+}
+
+impl PartialEq for ExpId {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl Eq for ExpId {}
+
+impl Hash for ExpId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+pub struct ParseContext<'ctx> {
+    file_table: &'ctx FileTable,
+    exp_map: RefCell<HashMap<ExpId, Exp>>,
+    current_file: usize,
+}
+
+impl ParseContext<'_> {
+    pub fn insert_exp(&self, exp: Exp) -> ExpId {
+        let id = ExpId(self.exp_map.borrow().len() as u64, self.span(0, 0));
+        self.exp_map.borrow_mut().insert(id, exp);
+        id
+    }
+
+    pub fn span(&self, start: usize, end: usize) -> Span {
+        Span(start, end, self.current_file)
+    }
+}
+
+impl<'ctx> ParseContext<'ctx> {
+    pub fn new(file_table: &'ctx FileTable, current_file: usize) -> Self {
+        ParseContext {
+            file_table,
+            exp_map: RefCell::new(HashMap::new()),
+            current_file,
+        }
+    }
+
+    pub fn parse<T: Parser>(mut self, parser: T) -> Result<AstContext, T::Error> {
+        let content = self.file_table.read_source(self.current_file).unwrap();
+
+        let root = parser.parse_content(&mut self, content)?;
+        Ok(AstContext {
+            exp_map: self.exp_map.take(),
+            root,
+        })
+    }
+}
+
+pub struct AstContext {
+    exp_map: HashMap<ExpId, Exp>,
+    pub root: StructType,
+}
+
+impl AstContext {
+    pub fn new(exp_map: HashMap<ExpId, Exp>, root: StructType) -> Self {
+        AstContext { exp_map, root }
+    }
+}
+
+impl AstContext {
+    pub fn into_tuple(self) -> (HashMap<ExpId, Exp>, StructType) {
+        (self.exp_map, self.root)
+    }
+
+    pub fn exp(&self, id: ExpId) -> &Exp {
+        &self
+            .exp_map
+            .get(&id)
+            .expect(&format!("ExpId {:?} not found", id))
+    }
+
+    pub fn exp_mut(&mut self, id: ExpId) -> &mut Exp {
+        self.exp_map.get_mut(&id).unwrap()
+    }
+}
+
 pub trait Parser {
     type Error: From<std::io::Error>;
 
-    fn file_table(&self) -> &FileTable;
-    fn set_current_file(&mut self, file: usize);
-    fn current_file(&self) -> usize;
-
-    fn parse_content(&self, content: Arc<String>) -> Result<Type, Self::Error>;
-
-    fn parse(&mut self, file: usize) -> Result<Type, Self::Error> {
-        self.set_current_file(file);
-
-        let content = self.file_table().read_source(file).unwrap();
-        self.parse_content(content)
-    }
-
-    fn span(&self, start: usize, end: usize) -> Span {
-        Span(start, end, self.current_file())
-    }
+    fn parse_content(
+        &self,
+        ctx: &mut ParseContext<'_>,
+        content: Arc<String>,
+    ) -> Result<StructType, Self::Error>;
 }
 
 pub struct FileTable {
@@ -76,7 +165,7 @@ impl FileTable {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span(usize, usize, usize);
 
 impl Span {

@@ -13,29 +13,32 @@ pub trait CompUnitVisitor {
 }
 
 pub trait ExpVisitor<V>: StatementVisitor<V> {
+    fn ast_ctx(&self) -> Arc<AstContext>;
     fn get_right_value(&self, left_value: V) -> V;
     /// This function shouldn't generate instructions like load.
     fn pass_left_value_as_right_value(&self, left_value: V) -> V;
 
-    fn visit_left_value(&mut self, exp: &Exp) -> V {
+    fn visit_left_value(&mut self, exp: ExpId) -> V {
+        let actx = self.ast_ctx();
+        let exp = actx.exp(exp);
         match exp {
             Exp::Array(array) => self.visit_array(array),
             Exp::Binary(op, lhs, rhs, span) => {
-                let lhs = self.visit_right_value(lhs);
-                let rhs = self.visit_right_value(rhs);
+                let lhs = self.visit_right_value(*lhs);
+                let rhs = self.visit_right_value(*rhs);
                 self.visit_binary(op, lhs, rhs, span)
             }
             Exp::Block(block) => self.visit_block(block),
             Exp::Call(call) => self.visit_call(call),
             Exp::Deref(deref) => self.visit_deref(deref),
-            Exp::Exp(exp, _) => self.visit_left_value(exp),
+            Exp::Exp(exp, _) => self.visit_left_value(*exp),
             Exp::GetAddr(get_addr) => self.visit_get_addr(get_addr),
             Exp::Index(index) => self.visit_index(index),
             Exp::Var(var) => self.visit_var(var),
             Exp::Number(number) => self.visit_number(number),
             Exp::Str(string, _) => self.visit_str(string),
             Exp::Unary(op, value, span) => {
-                let value = self.visit_right_value(value);
+                let value = self.visit_right_value(*value);
                 self.visit_unary(op, value, span)
             }
             Exp::ProtoDef(proto_def) => self.visit_proto(proto_def),
@@ -55,13 +58,13 @@ pub trait ExpVisitor<V>: StatementVisitor<V> {
         }
     }
 
-    fn visit_right_value(&mut self, exp: &Exp) -> V {
+    fn visit_right_value(&mut self, exp: ExpId) -> V {
         let left_value = self.visit_left_value(exp);
         self.get_right_value(left_value)
     }
 
     fn visit_get_addr(&mut self, get_addr: &GetAddr) -> V {
-        let exp = self.visit_left_value(&get_addr.exp);
+        let exp = self.visit_left_value(get_addr.exp);
         self.pass_left_value_as_right_value(exp)
     }
 
@@ -113,7 +116,7 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
         let result = block
             .return_value
             .as_ref()
-            .map(|e| self.visit_right_value(e));
+            .map(|e| self.visit_right_value(*e));
         self.on_leave_block();
         result
     }
@@ -121,7 +124,7 @@ pub trait BlockVisitor<V>: ExpVisitor<V> {
     fn visit_statement(&mut self, stmt: &Statement) -> Option<V> {
         match stmt {
             Statement::Exp(exp) => {
-                self.visit_right_value(exp);
+                self.visit_right_value(*exp);
                 None
             }
             Statement::InlineAsm(inline_asm) => {

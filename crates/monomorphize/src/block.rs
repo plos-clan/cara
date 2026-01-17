@@ -2,7 +2,7 @@ use ast::visitor::{BlockVisitor, ExpVisitor};
 
 use crate::MonomorphizeContext;
 
-impl BlockVisitor<()> for MonomorphizeContext<'_> {
+impl BlockVisitor<()> for MonomorphizeContext {
     fn on_enter_block(&mut self) {
         self.locals.push_scope();
     }
@@ -14,7 +14,7 @@ impl BlockVisitor<()> for MonomorphizeContext<'_> {
     fn visit_inline_asm(&mut self, _inline_asm: &ast::InlineAsm) {}
 
     fn visit_var_def(&mut self, var_def: &ast::VarDef) {
-        self.visit_right_value(&var_def.initial_value);
+        self.visit_right_value(var_def.initial_value);
         self.locals.push(var_def.name.clone());
     }
 }

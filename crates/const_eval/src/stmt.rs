@@ -2,7 +2,7 @@ use ast::visitor::StatementVisitor;
 
 use crate::{ConstEvalContext, Value};
 
-impl StatementVisitor<Value> for ConstEvalContext<'_> {
+impl StatementVisitor<Value> for ConstEvalContext {
     fn visit_assign(&mut self, _assign: &ast::Assign) -> Value {
         Value::new_unit()
     }

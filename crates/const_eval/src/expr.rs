@@ -7,7 +7,11 @@ use ast::{
 
 use crate::{ConstEvalContext, TypeKind, ValueKind, info::Value, queries::CONST_EVAL_PROVIDER};
 
-impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
+impl ExpVisitor<Value> for ConstEvalContext {
+    fn ast_ctx(&self) -> Arc<ast::AstContext> {
+        self.ctx.ast_ctx()
+    }
+
     fn get_right_value(&self, left_value: Value) -> Value {
         left_value
     }
@@ -113,17 +117,17 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_type_cast(&mut self, type_cast: &ast::TypeCast) -> Value {
-        self.visit_right_value(&type_cast.exp)
+        self.visit_right_value(type_cast.exp)
     }
 
     fn visit_structure(&mut self, structure: &ast::Structure) -> Value {
         let mut fields = HashMap::new();
-        for field in &structure.fields {
-            let value = self.visit_right_value(field.1);
-            fields.insert(field.0.clone(), value);
+        for (name, &value) in &structure.fields {
+            let value = self.visit_right_value(value);
+            fields.insert(name.clone(), value);
         }
 
-        let ValueKind::Type(ty) = self.visit_right_value(&structure.ty).kind() else {
+        let ValueKind::Type(ty) = self.visit_right_value(structure.ty).kind() else {
             unreachable!()
         };
 
@@ -131,7 +135,7 @@ impl<'c> ExpVisitor<Value> for ConstEvalContext<'c> {
     }
 
     fn visit_field_access(&mut self, field_access: &ast::FieldAccess) -> Value {
-        let lhs = self.visit_right_value(&field_access.lhs);
+        let lhs = self.visit_right_value(field_access.lhs);
         let ValueKind::Structure(_, structure) = lhs.kind() else {
             unreachable!()
         };

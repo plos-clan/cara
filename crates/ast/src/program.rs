@@ -8,13 +8,13 @@ pub struct CompUnit {
 
 #[derive(Debug, Clone)]
 pub enum GlobalItem {
-    ConstDef(ConstDef),
+    ConstDef(Arc<ConstDef>),
 }
 
 #[derive(Debug, Clone)]
 pub struct Block {
     pub items: Vec<BlockItem>,
-    pub return_value: Option<Exp>,
+    pub return_value: Option<ExpId>,
     pub span: Span,
 }
 
@@ -26,7 +26,7 @@ pub enum BlockItem {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Exp(Exp),
+    Exp(ExpId),
     InlineAsm(InlineAsm),
 }
 

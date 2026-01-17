@@ -1,14 +1,14 @@
 use std::{collections::HashMap, fmt::Display};
 
-use crate::{Exp, GlobalItem, Span};
+use crate::{ExpId, GlobalItem, Span};
 
 #[derive(Debug, Clone)]
 pub enum TypeEnum {
     Signed(u32),
     Unsigned(u32),
 
-    Array(Box<Exp>, u32),
-    Structure(HashMap<String, Exp>, Vec<GlobalItem>),
+    Array(ExpId, u32),
+    Structure(StructType),
 
     Unit,
 }
@@ -25,7 +25,7 @@ impl Display for Type {
             TypeEnum::Signed(bits) => write!(f, "i{}", bits),
             TypeEnum::Unsigned(bits) => write!(f, "u{}", bits),
             TypeEnum::Array(inner, len) => write!(f, "[{:?}; {}]", inner, len),
-            TypeEnum::Structure(fields, _) => {
+            TypeEnum::Structure(StructType { fields, .. }) => {
                 write!(f, "{{")?;
                 for (name, ty) in fields {
                     write!(f, "{}: {:?}, ", name, ty)?;
@@ -35,4 +35,11 @@ impl Display for Type {
             TypeEnum::Unit => write!(f, "()"),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct StructType {
+    pub fields: HashMap<String, ExpId>,
+    pub members: Vec<GlobalItem>,
+    pub span: Span,
 }

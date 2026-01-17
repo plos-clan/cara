@@ -5,57 +5,44 @@ use peg::RuleResult;
 
 use crate::lexer::{Token, TokenStream};
 
-pub struct CaraParser<'p> {
-    file_table: &'p FileTable,
-    current: usize,
-}
+#[derive(Default)]
+pub struct CaraParser;
 
-impl<'p> CaraParser<'p> {
-    pub fn new(file_table: &'p FileTable) -> Self {
-        Self {
-            file_table,
-            current: 0,
-        }
+impl CaraParser {
+    pub fn new() -> Self {
+        Self
     }
 }
 
-impl<'p> Parser for CaraParser<'p> {
+impl Parser for CaraParser {
     type Error = anyhow::Error;
 
-    fn file_table(&self) -> &FileTable {
-        self.file_table
-    }
-
-    fn current_file(&self) -> usize {
-        self.current
-    }
-
-    fn set_current_file(&mut self, file: usize) {
-        self.current = file;
-    }
-
-    fn parse_content(&self, content: Arc<String>) -> anyhow::Result<Type> {
-        cara_parser::module_root(&TokenStream::new(content)?, self).map_err(|e| e.into())
+    fn parse_content(
+        &self,
+        ctx: &mut ParseContext<'_>,
+        content: Arc<String>,
+    ) -> anyhow::Result<StructType> {
+        cara_parser::module_root(&TokenStream::new(content)?, ctx).map_err(|e| e.into())
     }
 }
 
 macro_rules! binary_op_rule {
     ($parser: expr, $l: expr, $r: expr, $op_enum: ident) => {{
         let s = $parser.span($l.span().start(), $r.span().end());
-        Exp::Binary(BinaryOp::$op_enum, Box::new($l), Box::new($r), s)
+        $parser.insert_exp(Exp::Binary(BinaryOp::$op_enum, $l, $r, s))
     }};
 }
 
 peg::parser! {
-    grammar cara_parser<'s>(parser: &CaraParser) for TokenStream {
-        pub rule module_root() -> Type
-        = l: position!() _ i: struct_inner() _ r: position!() {
-            Type { kind: i, span: parser.span(l, r) }
+    grammar cara_parser<'s>(parser: &ParseContext<'_>) for TokenStream {
+        pub rule module_root() -> StructType
+        = _ i: struct_inner() _ {
+            i
         }
 
         rule global_item() -> GlobalItem
         = c: const_def() {
-            GlobalItem::ConstDef(c)
+            GlobalItem::ConstDef(Arc::new(c))
         }
 
         rule abi_kind() -> Abi
@@ -127,21 +114,21 @@ peg::parser! {
             Param { name, param_type: ty, span: parser.span(l, r) }
         }
 
-        rule expr() -> Exp =
-            p: proto_def() { Exp::ProtoDef(Box::new(p)) } /
-            f: function_def() { Exp::Function(Box::new(f)) } /
+        rule expr() -> ExpId =
+            p: proto_def() { parser.insert_exp(Exp::ProtoDef(p)) } /
+            f: function_def() { parser.insert_exp(Exp::Function(f)) } /
             precedence!{
                 l: position!() _ "return" __ rhs: @ {
                     let span = parser.span(l, rhs.span().end());
-                    Exp::Return(Box::new(Return { value: Some(rhs), span }))
+                    parser.insert_exp(Exp::Return(Return { value: Some(rhs), span }))
                 }
                 l: position!() _ "return" __ ";" {
                     let span = parser.span(l, l);
-                    Exp::Return(Box::new(Return { value: None, span }))
+                    parser.insert_exp(Exp::Return(Return { value: None, span }))
                 }
                 lhs: (@) _ "=" _ rhs: @ {
                     let span = parser.span(lhs.span().start(), rhs.span().end());
-                    Exp::Assign(Box::new(Assign { lhs, rhs, span }))
+                    parser.insert_exp(Exp::Assign(Assign { lhs, rhs, span }))
                 }
                 --
                 l: (@) _ "<" _ r: @ {
@@ -189,19 +176,19 @@ peg::parser! {
                 --
                 s: position!() "+" _ r: (@) {
                     let span = parser.span(s, r.span().end());
-                    Exp::Unary(UnaryOp::Pos, Box::new(r), span)
+                    parser.insert_exp(Exp::Unary(UnaryOp::Pos, r, span))
                 }
                 s: position!() "-" _ r: (@) {
                     let span = parser.span(s, r.span().end());
-                    Exp::Unary(UnaryOp::Neg, Box::new(r), span)
+                    parser.insert_exp(Exp::Unary(UnaryOp::Neg, r, span))
                 }
                 s: position!() "!" _ r: (@) {
                     let span = parser.span(s, r.span().end());
-                    Exp::Unary(UnaryOp::Not, Box::new(r), span)
+                    parser.insert_exp(Exp::Unary(UnaryOp::Not, r, span))
                 }
                 s: position!() "*" _ r: (@) {
                     let span = parser.span(s, r.span().end());
-                    Exp::Unary(UnaryOp::Ptr, Box::new(r), span)
+                    parser.insert_exp(Exp::Unary(UnaryOp::Ptr, r, span))
                 }
                 --
                 l: (@) _ "<" "<" _ r: @ {
@@ -213,29 +200,25 @@ peg::parser! {
                 --
                 l: (@) __ "as" __ t: @ {
                     let span = parser.span(l.span().start(), t.span().end());
-                    Exp::TypeCast(Box::new(TypeCast { exp: l, ty: t, span }))
+                    parser.insert_exp(Exp::TypeCast(TypeCast { exp: l, ty: t, span }))
                 }
                 --
                 l: (@) _ "[" _ r: expr() _ "]" {
                     let span = parser.span(l.span().start(), r.span().end());
-                    Exp::Index(Box::new(Index {
-                        exp: l,
-                        index: r,
-                        span
-                    }))
+                    parser.insert_exp(Exp::Index(Index { exp: l, index: r, span }))
                 }
                 --
                 l: position!() "&" _ e: (@) {
                     let span = parser.span(l, e.span().end());
-                    Exp::GetAddr(Box::new(GetAddr { exp: e, span }))
+                    parser.insert_exp(Exp::GetAddr(GetAddr { exp: e, span }))
                 }
                 --
                 t: @ _ "{" _
                     fields: ((name: identifier() _ ":" _ value: expr() {(name, value)}) ** ("," _)) ","?
                 _ "}" r: position!() {
                     let span = parser.span(t.span().start(), r);
-                    Exp::Structure(Box::new(Structure {
-                        ty: Box::new(t),
+                    parser.insert_exp(Exp::Structure(Structure {
+                        ty: t,
                         fields: fields.into_iter().collect(),
                         span
                     }))
@@ -243,14 +226,14 @@ peg::parser! {
                 --
                 l: @ "." "*" r: position!() {
                     let span = parser.span(l.span().start(), r);
-                    Exp::Deref(Box::new(Deref {
+                    parser.insert_exp(Exp::Deref(Deref {
                         exp: l,
                         span
                     }))
                 }
                 l: @ "." n: identifier() r: position!() {
                     let span = parser.span(l.span().start(), r);
-                    Exp::FieldAccess(Box::new(FieldAccess {
+                    parser.insert_exp(Exp::FieldAccess(FieldAccess {
                         lhs: l,
                         field: n,
                         span
@@ -259,31 +242,31 @@ peg::parser! {
                 --
                 l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: position!() {
                     let span = parser.span(l.span().start(), r);
-                    Exp::Call(Box::new(Call {
+                    parser.insert_exp(Exp::Call(Call {
                         func: l,
                         args,
                         span
                     }))
                 }
                 --
-                m: module() { Exp::Module(m) }
-                t: type_() { Exp::Type(t) }
-                f: for_exp() { Exp::For(Box::new(f)) }
-                l: loop_exp() { Exp::Loop(Box::new(l)) }
-                w: while_exp() { Exp::While(Box::new(w)) }
-                i: if_exp() { Exp::IfExp(Box::new(i)) }
+                m: module() { parser.insert_exp(Exp::Module(m)) }
+                t: type_() { parser.insert_exp(Exp::Type(t)) }
+                f: for_exp() { parser.insert_exp(Exp::For(f)) }
+                l: loop_exp() { parser.insert_exp(Exp::Loop(l)) }
+                w: while_exp() { parser.insert_exp(Exp::While(w)) }
+                i: if_exp() { parser.insert_exp(Exp::IfExp(i)) }
                 l: position!() "(" _ ")" r: position!() {
                     let span = parser.span(l, r);
-                    Exp::Unit(span)
+                    parser.insert_exp(Exp::Unit(span))
                 }
                 "(" _ e: expr() _ ")" {
                     e
                 }
-                n: number() { n }
-                s: string_wrapper() { s }
-                v: var() { Exp::Var(Box::new(v)) }
-                b: block() { Exp::Block(Box::new(b)) }
-                a: array() { Exp::Array(Box::new(a)) }
+                n: number() { parser.insert_exp(n) }
+                s: string_wrapper() { parser.insert_exp(s) }
+                v: var() { parser.insert_exp(Exp::Var(v)) }
+                b: block() { parser.insert_exp(Exp::Block(b)) }
+                a: array() { parser.insert_exp(Exp::Array(a)) }
             }
 
         rule for_exp() -> For
@@ -438,15 +421,21 @@ peg::parser! {
             }} / "(" _ ")" {
                 TypeEnum::Unit
             } / "[" _ inner: expr() _ ";" _ len: digit() _ "]" {
-                TypeEnum::Array(Box::new(inner), len as u32)
+                TypeEnum::Array(inner, len as u32)
             } / "struct" _ "{" _ i: struct_inner() _ "}" {
-                i
+                TypeEnum::Structure(i)
             }
 
-        rule struct_inner() -> TypeEnum
-             = fields: (name: identifier() _ ":" _ ty: expr() { (name, ty) }) ** ("," _) ","? _
-             items: (global_item() ** _) {
-                 TypeEnum::Structure(fields.into_iter().collect(), items)
+        rule struct_inner() -> StructType
+             = l: position!() _
+             fields: (name: identifier() _ ":" _ ty: expr() { (name, ty) }) ** ("," _) ","? _
+             items: (global_item() ** _) _
+             r: position!() {
+                 StructType {
+                     fields: fields.into_iter().collect(),
+                     members: items,
+                     span: parser.span(l, r),
+                 }
              }
 
         rule type_() -> Type
