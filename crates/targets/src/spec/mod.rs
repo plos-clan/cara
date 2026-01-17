@@ -13,6 +13,7 @@ pub struct Target {
 super::target_spec_enum! {
     pub enum Arch {
         X86_64 = "x86_64",
+        Aarch64 = "aarch64",
     }
 
     parse_error_type = "arch";
@@ -22,6 +23,7 @@ super::target_spec_enum! {
     pub enum Os {
         Linux = "linux",
         Windows = "windows",
+        MacOs = "macos",
     }
 
     parse_error_type = "os";
@@ -33,6 +35,7 @@ super::target_spec_enum! {
         Gnu = "gnu",
         Musl = "musl",
         Unspecified = "",
+        MacAbi = "macabi",
     }
 
     parse_error_type = "env";

@@ -20,8 +20,12 @@ macro_rules! targets {
 targets! {
     "x86_64-linux-gnu" = (X86_64, Linux, Gnu, 64),
     "x86_64-linux-musl" = (X86_64, Linux, Musl, 64),
+    
     "x86_64-windows-gnu" = (X86_64, Windows, Gnu, 64),
     "x86_64-windows-msvc" = (X86_64, Windows, Msvc, 64),
+    
+    "aarch64-macos-darwin" = (Aarch64, MacOs, Unspecified, 64),
+    "x86_64-apple-darwin" = (X86_64, MacOs, Unspecified, 64),
 }
 
 impl Target {
@@ -35,9 +39,12 @@ impl Target {
 
 impl Default for Target {
     fn default() -> Self {
-        let (pointer_width, arch) = {
-            #[cfg(target_arch = "x86_64")]
+        let (pointer_width, arch) = if cfg!(target_arch = "x86_64") {
             (64, Arch::X86_64)
+        } else if cfg!(target_arch = "aarch64") {
+            (64, Arch::Aarch64)
+        } else {
+            panic!("Unsupported architecture.")
         };
         let env = if cfg!(target_env = "gnu") {
             TargetEnv::Gnu
@@ -52,6 +59,8 @@ impl Default for Target {
             Os::Linux
         } else if cfg!(target_os = "windows") {
             Os::Windows
+        } else if cfg!(target_os = "macos") {
+            Os::MacOs
         } else {
             panic!("Unsupported operating system.")
         };

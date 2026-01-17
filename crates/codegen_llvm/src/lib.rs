@@ -56,7 +56,7 @@ pub struct LLVMBackend {
 impl CodegenBackendBase for LLVMBackend {
     fn new(backend_options: BackendOptions) -> Self {
         LazyLock::force(&LLVM_CONTEXT);
-        Target::initialize_x86(&InitializationConfig::default());
+        Target::initialize_all(&InitializationConfig::default());
         Self { backend_options }
     }
 }
