@@ -73,6 +73,9 @@ impl DiagnosticDumper<'_> {
     }
 
     pub fn dump(self) {
+        if self.report.is_empty() {
+            return;
+        }
         let renderer = Renderer::styled().decor_style(DecorStyle::Unicode);
         anstream::println!("{}", renderer.render(&self.report));
     }

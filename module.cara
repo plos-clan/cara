@@ -1,3 +1,3 @@
-const test = fn() -> i64 {
-    return 0i64;
+const test = fn() -> usize {
+    return 0usize;
 };

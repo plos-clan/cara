@@ -20,23 +20,29 @@ impl Value {
 }
 
 macro_rules! check_op_impl {
-    ($name: ident, $op: expr, $($pat: pat => $ty_out:expr),*) => {
+    ({
+        $([$name:ident, $op:literal]),+ $(,)?
+    } $pat:tt) => {
+        $(check_op_impl!(@impl $pat $name $op);)+
+    };
+    (@impl {$($pat:pat => $e:expr),+ $(,)?} $name:ident $op:literal) => {
         pub fn $name(&self, other: &Self) -> Result<Self, Error> {
             match (self.type_.clone(), other.type_.clone()) {
-                $(
-                    $pat => Ok(Value::new($ty_out)),
-                )*
-                _ => Err(Error::TypeMismatch(self.type_.clone(), other.type_.clone())),
+                $($pat => Ok(Value::new($e)),)+
+                _ => Err(Error::UnsupportedOperator($op.into(), self.type_.clone())),
             }
         }
     };
 
-    (#unary $name: ident, $op: expr, $($pat: pat => $ty_out:expr),*) => {
+    (#unary {
+        $([$name:ident, $op:literal]),+ $(,)?
+    } $pat:tt) => {
+        $(check_op_impl!(@impl_unary $pat $name $op);)+
+    };
+    (@impl_unary {$($pat:pat => $e:expr),+ $(,)?} $name:ident $op:literal) => {
         pub fn $name(&self) -> Result<Self, Error> {
-            match self.type_ {
-                $(
-                    $pat => Ok(Value::new($ty_out)),
-                )*
+            match self.type_.clone() {
+                $($pat => Ok(Value::new($e)),)+
                 _ => Err(Error::UnsupportedOperator($op.into(), self.type_.clone())),
             }
         }
@@ -44,65 +50,69 @@ macro_rules! check_op_impl {
 }
 
 impl Value {
-    check_op_impl!(check_add, "+",
-        (Type::Signed(a), Type::Signed(b)) => Type::Signed(std::cmp::max(a, b))
+    check_op_impl!(
+        {
+            [check_add, "+"],
+            [check_sub, "-"],
+            [check_mul, "*"],
+            [check_div, "/"],
+            [check_mod, "%"],
+            [check_lshift, "<<"],
+            [check_rshift, ">>"],
+        }
+        {
+            (Type::Signed(a), Type::Signed(b)) => Type::Signed(std::cmp::max(a, b)),
+            (Type::Unsigned(a), Type::Unsigned(b)) => Type::Unsigned(std::cmp::max(a, b)),
+            (Type::Isize, Type::Usize) => Type::Isize,
+            (Type::Usize, Type::Isize) => Type::Usize,
+        }
     );
-    check_op_impl!(check_sub, "-",
-        (Type::Signed(a), Type::Signed(b)) => Type::Signed(std::cmp::max(a, b))
-    );
-    check_op_impl!(check_mul, "*",
-        (Type::Signed(a), Type::Signed(b)) => Type::Signed(std::cmp::max(a, b))
-    );
-    check_op_impl!(check_div, "/",
-        (Type::Signed(a), Type::Signed(b)) => Type::Signed(std::cmp::max(a, b))
-    );
-    check_op_impl!(check_mod, "%",
-        (Type::Signed(a), Type::Signed(b)) => Type::Signed(std::cmp::max(a, b))
-    );
-
-    check_op_impl!(check_lshift, "<<",
-        (Type::Signed(a), Type::Signed(b)) => Type::Signed(std::cmp::max(a, b))
-    );
-    check_op_impl!(check_rshift, ">>",
-        (Type::Signed(a), Type::Signed(b)) => Type::Signed(std::cmp::max(a, b))
-    );
-
-    check_op_impl!(check_eq, "==",
-        (Type::Signed(_), Type::Signed(_)) => Type::Bool,
-        (Type::Bool, Type::Bool) => Type::Bool
-    );
-    check_op_impl!(check_neq, "!=",
-        (Type::Signed(_), Type::Signed(_)) => Type::Bool,
-        (Type::Bool, Type::Bool) => Type::Bool
-    );
-
-    check_op_impl!(check_gt, ">",
-        (Type::Signed(_), Type::Signed(_)) => Type::Bool
-    );
-    check_op_impl!(check_lt, "<",
-        (Type::Signed(_), Type::Signed(_)) => Type::Bool
-    );
-    check_op_impl!(check_ge, ">=",
-        (Type::Signed(_), Type::Signed(_)) => Type::Bool
-    );
-    check_op_impl!(check_le, "<=",
-        (Type::Signed(_), Type::Signed(_)) => Type::Bool
+    check_op_impl!(
+        {
+            [check_eq, "=="],
+            [check_neq, "!="],
+            [check_gt, ">"],
+            [check_lt, "<"],
+            [check_ge, ">="],
+            [check_le, "<="],
+        }
+        {
+            (Type::Signed(_), Type::Signed(_)) => Type::Bool,
+            (Type::Unsigned(_), Type::Unsigned(_)) => Type::Bool,
+            (Type::Isize, Type::Usize) => Type::Bool,
+            (Type::Usize, Type::Isize) => Type::Bool,
+            (Type::Bool, Type::Bool) => Type::Bool,
+        }
     );
 
-    check_op_impl!(check_and, "&&",
-        (Type::Bool, Type::Bool) => Type::Bool
-    );
-    check_op_impl!(check_or, "||",
-        (Type::Bool, Type::Bool) => Type::Bool
+    check_op_impl!(
+        {
+            [check_and, "&&"],
+            [check_or, "||"],
+        }
+        {
+            (Type::Bool, Type::Bool) => Type::Bool
+        }
     );
 
-    check_op_impl!(#unary check_pos, "+",
-        Type::Signed(a) => Type::Signed(a)
+    check_op_impl!(#unary
+        {
+            [check_pos, "+"],
+            [check_neg, "-"],
+        }
+        {
+            Type::Signed(a) => Type::Signed(a),
+            Type::Unsigned(a) => Type::Unsigned(a),
+            Type::Isize => Type::Isize,
+            Type::Usize => Type::Usize,
+        }
     );
-    check_op_impl!(#unary check_neg, "-",
-        Type::Signed(a) => Type::Signed(a)
-    );
-    check_op_impl!(#unary check_not, "!",
-        Type::Bool => Type::Bool
+    check_op_impl!(#unary
+        {
+            [check_not, "!"],
+        }
+        {
+            Type::Bool => Type::Bool
+        }
     );
 }

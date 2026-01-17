@@ -5,7 +5,7 @@ use inkwell::{
     values::{AnyValue, BasicValue, InstructionOpcode},
 };
 
-use ast::{Array, BinaryOp, Call, Span, Var, visitor::ExpVisitor};
+use ast::{Array, BinaryOp, Call, Span, TypeEnum, Var, visitor::ExpVisitor};
 use query::DefId;
 use uuid::Uuid;
 
@@ -105,8 +105,16 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
     }
 
     fn visit_number(&mut self, number: &ast::Number) -> Value<'v> {
-        let ty = if let Some((_, width)) = number.ty {
-            LLVM_CONTEXT.custom_width_int_type(width)
+        let ty = if let Some(ty) = &number.ty {
+            match ty {
+                TypeEnum::Signed(width) | TypeEnum::Unsigned(width) => {
+                    LLVM_CONTEXT.custom_width_int_type(*width)
+                }
+                TypeEnum::Isize | TypeEnum::Usize => {
+                    LLVM_CONTEXT.custom_width_int_type(self.queries.target().pointer_width as u32)
+                }
+                _ => unreachable!(),
+            }
         } else {
             LLVM_CONTEXT.i32_type()
         };

@@ -1,22 +1,27 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use ast::{AstContext, ConstDef, GlobalItem};
+use bon::bon;
 pub use defs::*;
 pub use provider::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
+use targets::spec::Target;
 
 mod defs;
 mod provider;
 
 pub struct QueryContext {
     crate_name: String,
+    target: Target,
     ast_ctx: Arc<AstContext>,
     consts: BTreeMap<DefId, Arc<ConstDef>>,
     thread_pool: ThreadPool,
 }
 
+#[bon]
 impl QueryContext {
-    pub fn new(crate_name: String, ast: Arc<AstContext>) -> Arc<Self> {
+    #[builder]
+    pub fn new(crate_name: String, target: Target, ast: Arc<AstContext>) -> Arc<Self> {
         let mut consts = BTreeMap::new();
         for GlobalItem::ConstDef(const_def) in ast.root.members.iter() {
             let id = DefId(consts.len());
@@ -24,6 +29,7 @@ impl QueryContext {
         }
         Arc::new(Self {
             crate_name,
+            target,
             ast_ctx: ast,
             consts,
             thread_pool: ThreadPoolBuilder::new().build().unwrap(),
@@ -43,6 +49,10 @@ impl QueryContext {
 
     pub fn ast_ctx(&self) -> Arc<AstContext> {
         self.ast_ctx.clone()
+    }
+
+    pub fn target(&self) -> &Target {
+        &self.target
     }
 }
 

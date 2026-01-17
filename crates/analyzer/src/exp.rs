@@ -6,7 +6,7 @@ use std::{
 };
 
 use ast::{
-    Array, BinaryOp, ConstInitialValue, Span, TypeCast, UnaryOp,
+    Array, BinaryOp, ConstInitialValue, Span, TypeCast, TypeEnum, UnaryOp,
     visitor::{BlockVisitor, ExpVisitor},
 };
 use query::DefId;
@@ -145,12 +145,16 @@ impl ExpVisitor<Value> for AnalyzerContext {
     }
 
     fn visit_number(&mut self, number: &ast::Number) -> Value {
-        if let Some((signed, width)) = number.ty {
-            Value::new(if signed {
-                Type::Signed(width)
-            } else {
-                Type::Unsigned(width)
-            })
+        if let Some(ty) = &number.ty {
+            match ty {
+                TypeEnum::Signed(width) => Value::new(Type::Signed(*width)),
+                TypeEnum::Unsigned(width) => Value::new(Type::Unsigned(*width)),
+                TypeEnum::Isize => Value::new(Type::Signed(self.ctx.target().pointer_width as u32)),
+                TypeEnum::Usize => {
+                    Value::new(Type::Unsigned(self.ctx.target().pointer_width as u32))
+                }
+                _ => unreachable!(),
+            }
         } else {
             Value::new(Type::Signed(32))
         }

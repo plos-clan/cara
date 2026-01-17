@@ -133,7 +133,7 @@ pub struct GetAddr {
 #[derive(Debug, Clone)]
 pub struct Number {
     pub num: u64,
-    pub ty: Option<(bool, u32)>,
+    pub ty: Option<TypeEnum>,
     pub span: Span,
 }
 

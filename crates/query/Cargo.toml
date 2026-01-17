@@ -5,5 +5,7 @@ edition.workspace = true
 
 [dependencies]
 ast.workspace = true
+bon = "3.8.2"
 downcast-rs = "2.0.2"
 rayon = "1.11.0"
+targets = { version = "0.0.1", path = "../targets" }

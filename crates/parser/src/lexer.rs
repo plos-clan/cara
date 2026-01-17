@@ -120,6 +120,7 @@ impl std::error::Error for LexingErrors {}
 #[logos(skip(r"\/\* [^\*\/]* \*\/"))]
 #[logos(error(LexingError, LexingError::from_lexer))]
 pub enum Token {
+    #[regex(r"\d+[iu]size", |lex| lex.slice().to_string())]
     #[regex(r"\d+[iu][1-9]\d*", |lex| lex.slice().to_string())]
     #[regex(r"\d+", |lex| lex.slice().to_string())]
     Number(String),

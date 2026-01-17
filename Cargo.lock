@@ -181,6 +181,7 @@ dependencies = [
  "parser",
  "query",
  "simplifier",
+ "targets",
  "tempfile",
 ]
 
@@ -556,8 +557,10 @@ name = "query"
 version = "0.0.1"
 dependencies = [
  "ast",
+ "bon",
  "downcast-rs",
  "rayon",
+ "targets",
 ]
 
 [[package]]
@@ -723,6 +726,10 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "targets"
+version = "0.0.1"
 
 [[package]]
 name = "tempfile"

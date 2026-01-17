@@ -38,7 +38,7 @@ const main = extern C[main] fn() -> i64 {
     print_num(fib_result);
     let test = TestType { a: fib_num, b: 0 };
     TestType::dump_test_type(&test);
-    return test_mod::test();
+    return test_mod::test() as i64;
 };
 
 const fib = fn(n: i64) -> i64 {

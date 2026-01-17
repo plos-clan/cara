@@ -1,8 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use ast::{
-    Array, BinaryOp, Block, Call, Deref, FunctionDef, Index, Number, Span, Type, TypeEnum, UnaryOp,
-    Var, visitor::ExpVisitor,
+    Array, BinaryOp, Block, Call, Deref, FunctionDef, Index, Number, Span, Type, UnaryOp, Var,
+    visitor::ExpVisitor,
 };
 
 use crate::{ConstEvalContext, TypeKind, ValueKind, info::Value, queries::CONST_EVAL_PROVIDER};
@@ -80,13 +80,9 @@ impl ExpVisitor<Value> for ConstEvalContext {
 
     fn visit_number(&mut self, number: &Number) -> Value {
         let mut value = Value::new_int(number.num as i64);
-        if let Some((signed, width)) = number.ty {
+        if let Some(ty) = number.ty.clone() {
             value.set_type(TypeKind::new(Arc::new(Type {
-                kind: if signed {
-                    TypeEnum::Signed(width)
-                } else {
-                    TypeEnum::Unsigned(width)
-                },
+                kind: ty,
                 span: Span::default(),
             })));
         }

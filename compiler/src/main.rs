@@ -5,12 +5,14 @@ use std::{
 };
 
 use analyzer::queries::CHECK_CONST_DEF;
+use anyhow::bail;
 use ast::{FileTable, ParseContext};
 use codegen::{BackendOptions, CodegenBackendBase, EmitOptions, OutputType, codegen};
 use codegen_llvm::LLVMBackend;
 use parser::CaraParser;
 use query::QueryContext;
 use simplifier::simplify;
+use targets::spec::Target;
 use tempfile::NamedTempFile;
 
 use args::*;
@@ -31,7 +33,18 @@ fn main() -> anyhow::Result<()> {
                 reloc_mode,
                 release,
                 crate_name,
+                target,
             } = build;
+
+            let target = if let Some(target) = target {
+                if let Some(target) = Target::by_name(&target) {
+                    target
+                } else {
+                    bail!("Invalid target")
+                }
+            } else {
+                Target::default()
+            };
 
             let temp_file = LazyCell::new(|| NamedTempFile::new().unwrap());
 
@@ -61,7 +74,11 @@ fn main() -> anyhow::Result<()> {
             let ast = ParseContext::new(&file_table, file_id).parse(CaraParser::new())?;
             let ast = simplify(&mut file_table, crate_name.clone(), ast);
 
-            let query_ctx = QueryContext::new(crate_name, Arc::new(ast));
+            let query_ctx = QueryContext::builder()
+                .crate_name(crate_name)
+                .ast(Arc::new(ast))
+                .target(target)
+                .build();
 
             let main_fn = query_ctx.main_fn_id();
             let mut result = query_ctx.query(&CHECK_CONST_DEF, main_fn).unwrap();

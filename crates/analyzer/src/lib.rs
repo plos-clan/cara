@@ -94,6 +94,8 @@ impl AnalyzerContext {
                 }
                 Type::Structure(new_fields)
             }
+            TypeEnum::Isize => Type::Signed(self.ctx.target().pointer_width as u32),
+            TypeEnum::Usize => Type::Unsigned(self.ctx.target().pointer_width as u32),
         }
     }
 }

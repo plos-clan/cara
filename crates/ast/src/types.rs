@@ -6,6 +6,8 @@ use crate::{ExpId, GlobalItem, Span};
 pub enum TypeEnum {
     Signed(u32),
     Unsigned(u32),
+    Usize,
+    Isize,
 
     Array(ExpId, u32),
     Structure(StructType),
@@ -24,6 +26,8 @@ impl Display for Type {
         match &self.kind {
             TypeEnum::Signed(bits) => write!(f, "i{}", bits),
             TypeEnum::Unsigned(bits) => write!(f, "u{}", bits),
+            TypeEnum::Usize => write!(f, "usize"),
+            TypeEnum::Isize => write!(f, "isize"),
             TypeEnum::Array(inner, len) => write!(f, "[{:?}; {}]", inner, len),
             TypeEnum::Structure(StructType { fields, .. }) => {
                 write!(f, "{{")?;

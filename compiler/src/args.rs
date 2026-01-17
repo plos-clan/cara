@@ -40,6 +40,9 @@ pub struct BuildCommand {
     /// crate name.
     #[argh(option, default = r#""main".into()"#)]
     pub crate_name: String,
+    /// target triple.
+    #[argh(option)]
+    pub target: Option<String>,
 }
 
 pub enum BuildResult {

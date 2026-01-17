@@ -4,6 +4,8 @@ use std::{collections::HashMap, fmt::Display};
 pub enum Type {
     Signed(u32),
     Unsigned(u32),
+    Usize,
+    Isize,
 
     #[default]
     Unit,
@@ -50,6 +52,8 @@ impl Display for Type {
         match self {
             Self::Signed(bits) => write!(f, "i{}", bits),
             Self::Unsigned(bits) => write!(f, "u{}", bits),
+            Self::Usize => write!(f, "usize"),
+            Self::Isize => write!(f, "isize"),
             Self::Bool => write!(f, "bool"),
             Self::Unit => write!(f, "()"),
 

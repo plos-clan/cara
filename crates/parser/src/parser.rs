@@ -349,22 +349,35 @@ peg::parser! {
                         let Ok(num) = num.parse() else {
                             return Err(());
                         };
-                        let Ok(width) = width.parse() else {
-                            return Err(());
+                        let ty = if width == "size" {
+                            if p == "u" {
+                                TypeEnum::Usize
+                            } else {
+                                TypeEnum::Isize
+                            }
+                        } else {
+                            let Ok(width) = width.parse() else {
+                                return Err(());
+                            };
+                            if p == "u" {
+                                TypeEnum::Unsigned(width)
+                            } else {
+                                TypeEnum::Signed(width)
+                            }
                         };
-                        Ok((num, width))
+                        Ok((num, ty))
                     };
 
-                    let (num, ty) = if num_str.contains("i") {
-                        let Ok((num, width)) = num_width_getter("i") else {
+                    let (num, ty) = if num_str.contains("u") {
+                        let Ok((num, ty)) = num_width_getter("u") else {
                             return RuleResult::Failed;
                         };
-                        (num, Some((true, width)))
-                    } else if num_str.contains("u") {
-                        let Ok((num, width)) = num_width_getter("u") else {
+                        (num, Some(ty))
+                    } else if num_str.contains("i") {
+                        let Ok((num, ty)) = num_width_getter("i") else {
                             return RuleResult::Failed;
                         };
-                        (num, Some((false, width)))
+                        (num, Some(ty))
                     } else {
                         let Ok(num) = num_str.parse() else {
                             return RuleResult::Failed;
@@ -401,13 +414,28 @@ peg::parser! {
                 Some((Token::Ident(ident), span)) => {
                     if ident.len() > 1 {
                         let (prefix, width) = ident.split_at(1);
-                        if prefix != "i" && prefix != "u" {
+
+                        let signed = if prefix == "i" {
+                            true
+                        } else if prefix == "u" {
+                            false
+                        } else {
                             return RuleResult::Failed;
+                        };
+
+                        if width == "size" {
+                            let result = if signed {
+                                TypeEnum::Isize
+                            } else {
+                                TypeEnum::Usize
+                            };
+                            return RuleResult::Matched(pos+1, result);
                         }
+
                         let Ok(width) = width.parse() else {
                             return RuleResult::Failed;
                         };
-                        let kind = if prefix == "i" {
+                        let kind = if signed {
                             TypeEnum::Signed(width)
                         } else {
                             TypeEnum::Unsigned(width)
