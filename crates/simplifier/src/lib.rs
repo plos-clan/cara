@@ -92,11 +92,11 @@ impl SimplifierContext<'_> {
             initial_value,
             span,
         } = const_def.as_ref();
-        let name = self.globals.prefixed_name(&raw_name);
+        let name = self.globals.prefixed_name(raw_name);
         self.globals.set_name_cache(raw_name.clone());
         match initial_value {
             ConstInitialValue::Exp(exp) => {
-                let exp = self.simp_exp(exp.exp.clone());
+                let exp = self.simp_exp(exp.exp);
                 GlobalItem::ConstDef(Arc::new(ConstDef {
                     name,
                     initial_value: ConstInitialValue::Exp(ConstExp { exp }),

@@ -323,7 +323,7 @@ impl SimplifierContext<'_> {
 
         let file = self.file_table.register_file(path).unwrap();
         let ast = ParseContext::new(self.file_table, file)
-            .parse(CaraParser::default())
+            .parse(CaraParser)
             .unwrap();
         let (exps, root) = ast.into_tuple();
         self.origin_exps.push(exps);

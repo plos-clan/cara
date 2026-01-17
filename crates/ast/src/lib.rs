@@ -100,10 +100,10 @@ impl AstContext {
     }
 
     pub fn exp(&self, id: ExpId) -> &Exp {
-        &self
+        self
             .exp_map
             .get(&id)
-            .expect(&format!("ExpId {:?} not found", id))
+            .unwrap_or_else(|| panic!("ExpId {:?} not found", id))
     }
 
     pub fn exp_mut(&mut self, id: ExpId) -> &mut Exp {
