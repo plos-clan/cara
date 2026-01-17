@@ -14,7 +14,7 @@ tempfile = "3.24.0"
 analyzer.workspace = true
 simplifier = { path = "../crates/simplifier" }
 ast.workspace = true
-targets = { version = "0.0.1", path = "../crates/targets" }
+targets.workspace = true
 
 [features]
 trace = ["parser/trace"]

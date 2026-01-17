@@ -10,6 +10,7 @@ errors = { path = "./crates/errors" }
 parser = { path = "./crates/parser" }
 query = { path = "./crates/query" }
 monomorphize = { path = "./crates/monomorphize" }
+targets = { path = "./crates/targets" }
 anyhow = "1.0.100"
 
 [workspace]

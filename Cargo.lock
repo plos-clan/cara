@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "analyzer"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -123,7 +123,7 @@ dependencies = [
 
 [[package]]
 name = "ast"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "beef"
@@ -170,7 +170,7 @@ checksum = "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510"
 
 [[package]]
 name = "carac"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "analyzer",
  "anyhow",
@@ -203,7 +203,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "codegen"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bon",
  "monomorphize",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "codegen_llvm"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ast",
  "codegen",
@@ -231,7 +231,7 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
 name = "const_eval"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ast",
  "query",
@@ -474,7 +474,7 @@ checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
 name = "monomorphize"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ast",
  "const_eval",
@@ -496,7 +496,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "parser"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "ast",
@@ -554,7 +554,7 @@ dependencies = [
 
 [[package]]
 name = "query"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ast",
  "bon",
@@ -699,7 +699,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "simplifier"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ast",
  "parser",
@@ -714,7 +714,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "symbol_table"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "syn"
@@ -729,7 +729,7 @@ dependencies = [
 
 [[package]]
 name = "targets"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "tempfile"
@@ -766,7 +766,7 @@ dependencies = [
 
 [[package]]
 name = "type_infer"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "unescaper"
