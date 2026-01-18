@@ -12,7 +12,7 @@ use ast::{
 use query::DefId;
 
 use crate::{
-    AnalyzerContext, Error, Symbol, Type, Value,
+    AnalyzerContext, Error, Symbol, Type, Value, number_pattern,
     queries::{AnalyzeResult, CHECK_CONST_DEF},
 };
 
@@ -149,10 +149,8 @@ impl ExpVisitor<Value> for AnalyzerContext {
             match ty {
                 TypeEnum::Signed(width) => Value::new(Type::Signed(*width)),
                 TypeEnum::Unsigned(width) => Value::new(Type::Unsigned(*width)),
-                TypeEnum::Isize => Value::new(Type::Signed(self.ctx.target().pointer_width as u32)),
-                TypeEnum::Usize => {
-                    Value::new(Type::Unsigned(self.ctx.target().pointer_width as u32))
-                }
+                TypeEnum::Isize => Value::new(Type::Isize),
+                TypeEnum::Usize => Value::new(Type::Usize),
                 _ => unreachable!(),
             }
         } else {
@@ -180,12 +178,10 @@ impl ExpVisitor<Value> for AnalyzerContext {
 
         if !matches!(
             (value_type, &target),
-            (
-                Type::Signed(_) | Type::Unsigned(_),
-                Type::Signed(_) | Type::Unsigned(_)
-            ) | (Type::Bool, Type::Signed(_) | Type::Unsigned(_))
-                | (Type::Signed(_) | Type::Unsigned(_), Type::Ptr(_))
-                | (Type::Ptr(_), Type::Signed(_) | Type::Unsigned(_))
+            (number_pattern!(), number_pattern!())
+                | (Type::Bool, number_pattern!())
+                | (number_pattern!(), Type::Ptr(_))
+                | (Type::Ptr(_), number_pattern!())
                 | (Type::Ptr(_), Type::Ptr(_))
                 | (Type::Function(_, _), Type::Ptr(_))
         ) {

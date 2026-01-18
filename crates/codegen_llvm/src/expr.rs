@@ -111,7 +111,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                     LLVM_CONTEXT.custom_width_int_type(*width)
                 }
                 TypeEnum::Isize | TypeEnum::Usize => {
-                    LLVM_CONTEXT.custom_width_int_type(self.queries.target().pointer_width as u32)
+                    LLVM_CONTEXT.custom_width_int_type(self.queries.target().pointer_width())
                 }
                 _ => unreachable!(),
             }

@@ -7,7 +7,15 @@ pub struct Target {
     pub arch: Arch,
     pub os: Os,
     pub env: TargetEnv,
-    pub pointer_width: u16,
+}
+
+impl Target {
+    pub fn pointer_width(&self) -> u32 {
+        match self.arch {
+            Arch::X86_64 => 64,
+            Arch::Aarch64 => 64,
+        }
+    }
 }
 
 super::target_spec_enum! {
@@ -24,6 +32,7 @@ super::target_spec_enum! {
         Linux = "linux",
         Windows = "windows",
         MacOs = "macos",
+        None = "none",
     }
 
     parse_error_type = "os";

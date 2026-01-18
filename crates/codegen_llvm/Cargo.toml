@@ -11,3 +11,5 @@ query.workspace = true
 uuid = { version = "1.19.0", features = ["v4"] }
 codegen.workspace = true
 symbol_table = { path = "../symbol_table" }
+target-lexicon = "0.13.4"
+targets.workspace = true

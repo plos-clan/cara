@@ -68,7 +68,7 @@ pub(crate) fn get_llvm_type(ctx: Arc<QueryContext>, ty: &Type) -> TypeKind<'stat
                 field_types,
             }
         }
-        TypeEnum::Usize | TypeEnum::Isize => TypeKind::new_int(ctx.target().pointer_width as u32),
+        TypeEnum::Usize | TypeEnum::Isize => TypeKind::new_int(ctx.target().pointer_width()),
     }
 }
 

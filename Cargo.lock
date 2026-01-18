@@ -220,6 +220,8 @@ dependencies = [
  "inkwell",
  "query",
  "symbol_table",
+ "target-lexicon",
+ "targets",
  "uuid",
 ]
 
@@ -726,6 +728,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "target-lexicon"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1dd07eb858a2067e2f3c7155d54e929265c264e6f37efe3ee7a8d1b5a1dd0ba"
 
 [[package]]
 name = "targets"

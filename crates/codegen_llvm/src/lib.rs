@@ -17,7 +17,9 @@ use inkwell::{
     llvm_sys::LLVMCallConv,
     module::Module,
     passes::PassBuilderOptions,
-    targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
+    targets::{
+        CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
+    },
 };
 use query::{DefId, QueryContext};
 use symbol_table::SymbolTable;
@@ -25,6 +27,7 @@ use uuid::Uuid;
 
 use crate::{
     info::{Symbol, TypeKind, Value},
+    targets::llvm_target,
     types::get_llvm_type_from_exp,
 };
 
@@ -32,6 +35,7 @@ mod expr;
 mod info;
 mod program;
 mod stmt;
+mod targets;
 mod types;
 
 struct LLVMContext(Context);
@@ -72,7 +76,11 @@ impl CodegenBackend for LLVMBackend {
             Self::codegen_item(ctx.clone(), def_id, global_funcs.clone(), module.clone());
         }
 
-        Box::new(LLVMCodegenResult::new(module, self.backend_options))
+        Box::new(LLVMCodegenResult::new(
+            module,
+            *ctx.target(),
+            self.backend_options,
+        ))
     }
 }
 
@@ -233,7 +241,11 @@ pub struct LLVMCodegenResult {
 }
 
 impl LLVMCodegenResult {
-    fn new(module: Arc<Module<'static>>, backend_options: BackendOptions) -> Self {
+    fn new(
+        module: Arc<Module<'static>>,
+        target: ::targets::spec::Target,
+        backend_options: BackendOptions,
+    ) -> Self {
         let BackendOptions {
             code_model,
             optimize_level,
@@ -260,7 +272,7 @@ impl LLVMCodegenResult {
             codegen::RelocMode::DynamicNoPic => RelocMode::DynamicNoPic,
         };
 
-        let target_triple = TargetMachine::get_default_triple();
+        let target_triple = TargetTriple::create(&format!("{}", llvm_target(target)));
         let target = Target::from_triple(&target_triple).unwrap();
         let target_machine = target
             .create_target_machine(

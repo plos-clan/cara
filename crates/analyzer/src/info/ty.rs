@@ -1,5 +1,12 @@
 use std::{collections::HashMap, fmt::Display};
 
+#[macro_export]
+macro_rules! number_pattern {
+    () => {
+        Type::Signed(_) | Type::Unsigned(_) | Type::Usize | Type::Isize
+    };
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Signed(u32),

@@ -2,7 +2,7 @@ use super::{Arch, Os, Target, TargetEnv};
 
 macro_rules! targets {
     ($(
-        $name: literal = ($arch: ident, $os: ident, $abi: ident, $pointer_width: literal)
+        $name: literal = ($arch: ident, $os: ident, $abi: ident)
     ),* $(,)?) => {
         static TARGETS: &[(&'static str, Target)] = &[
             $(
@@ -10,7 +10,6 @@ macro_rules! targets {
                     arch: Arch::$arch,
                     os: Os::$os,
                     env: TargetEnv::$abi,
-                    pointer_width: $pointer_width,
                 })
             ),*
         ];
@@ -18,14 +17,17 @@ macro_rules! targets {
 }
 
 targets! {
-    "x86_64-linux-gnu" = (X86_64, Linux, Gnu, 64),
-    "x86_64-linux-musl" = (X86_64, Linux, Musl, 64),
-    
-    "x86_64-windows-gnu" = (X86_64, Windows, Gnu, 64),
-    "x86_64-windows-msvc" = (X86_64, Windows, Msvc, 64),
-    
-    "aarch64-macos-darwin" = (Aarch64, MacOs, Unspecified, 64),
-    "x86_64-apple-darwin" = (X86_64, MacOs, Unspecified, 64),
+    "x86_64-linux-gnu" = (X86_64, Linux, Gnu),
+    "x86_64-linux-musl" = (X86_64, Linux, Musl),
+
+    "x86_64-windows-gnu" = (X86_64, Windows, Gnu),
+    "x86_64-windows-msvc" = (X86_64, Windows, Msvc),
+
+    "aarch64-macos-darwin" = (Aarch64, MacOs, Unspecified),
+    "x86_64-apple-darwin" = (X86_64, MacOs, Unspecified),
+
+    "x86_64-unknown-none" = (X86_64, None, Unspecified),
+    "aarch64-unknown-none" = (Aarch64, None, Unspecified),
 }
 
 impl Target {
@@ -39,10 +41,10 @@ impl Target {
 
 impl Default for Target {
     fn default() -> Self {
-        let (pointer_width, arch) = if cfg!(target_arch = "x86_64") {
-            (64, Arch::X86_64)
+        let arch = if cfg!(target_arch = "x86_64") {
+            Arch::X86_64
         } else if cfg!(target_arch = "aarch64") {
-            (64, Arch::Aarch64)
+            Arch::Aarch64
         } else {
             panic!("Unsupported architecture.")
         };
@@ -64,11 +66,6 @@ impl Default for Target {
         } else {
             panic!("Unsupported operating system.")
         };
-        Self {
-            arch,
-            os,
-            env,
-            pointer_width,
-        }
+        Self { arch, os, env }
     }
 }
