@@ -30,7 +30,7 @@ pub enum LinkerFlavorCli {
     Unix(Cc),
     // Note: `Msvc(Lld::No)` is also a stable value.
     Msvc(Lld),
-    
+
     // Legacy stable values
     Gcc,
     Ld,
@@ -218,8 +218,7 @@ impl LinkerFlavor {
 
     pub fn lld_flavor(self) -> LldFlavor {
         match self {
-            LinkerFlavor::Gnu(..)
-            | LinkerFlavor::Unix(..) => LldFlavor::Ld,
+            LinkerFlavor::Gnu(..) | LinkerFlavor::Unix(..) => LldFlavor::Ld,
             LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
             LinkerFlavor::Msvc(..) => LldFlavor::Link,
         }

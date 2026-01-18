@@ -68,11 +68,11 @@ fn main() -> anyhow::Result<()> {
                 })
                 .build();
 
-            let mut file_table = FileTable::new();
+            let file_table = FileTable::new();
             let file_id = file_table.register_file(input_file.clone())?;
 
-            let ast = ParseContext::new(&file_table, file_id).parse(CaraParser::new())?;
-            let ast = simplify(&mut file_table, crate_name.clone(), ast);
+            let ast = ParseContext::new(&file_table).parse(&CaraParser, file_id)?;
+            let ast = simplify(crate_name.clone(), ast);
 
             let query_ctx = QueryContext::builder()
                 .crate_name(crate_name)

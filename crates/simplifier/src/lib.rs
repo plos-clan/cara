@@ -1,8 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use ast::{
-    AstContext, ConstDef, ConstExp, ConstInitialValue, Exp, ExpId, FileTable, GlobalItem,
-    StructType, Type, TypeEnum,
+    AstContext, ConstDef, ConstExp, ConstInitialValue, Exp, ExpId, GlobalItem, StructType, Type,
+    TypeEnum,
 };
 use symbol_table::SymbolTable;
 
@@ -12,9 +12,9 @@ mod exp;
 mod namespace;
 mod stmt;
 
-pub fn simplify(file_table: &mut FileTable, crate_name: String, ast: AstContext) -> AstContext {
+pub fn simplify(crate_name: String, ast: AstContext) -> AstContext {
     let (exps, root) = ast.into_tuple();
-    let mut ctx = SimplifierContext::new(file_table, crate_name, exps);
+    let mut ctx = SimplifierContext::new(crate_name, exps);
 
     let span = ctx.simp_struct_ty(root).span;
 
@@ -32,9 +32,8 @@ pub fn simplify(file_table: &mut FileTable, crate_name: String, ast: AstContext)
     )
 }
 
-struct SimplifierContext<'ctx> {
+struct SimplifierContext {
     origin_exps: Vec<HashMap<ExpId, Exp>>,
-    file_table: &'ctx mut FileTable,
     crate_name: String,
     globals: NameSpaces,
     locals: SymbolTable<String>,
@@ -42,15 +41,10 @@ struct SimplifierContext<'ctx> {
     exps: HashMap<ExpId, Exp>,
 }
 
-impl<'ctx> SimplifierContext<'ctx> {
-    fn new(
-        file_table: &'ctx mut FileTable,
-        crate_name: String,
-        origin_exps: HashMap<ExpId, Exp>,
-    ) -> Self {
+impl SimplifierContext {
+    fn new(crate_name: String, origin_exps: HashMap<ExpId, Exp>) -> Self {
         Self {
             origin_exps: vec![origin_exps],
-            file_table,
             crate_name: crate_name.clone(),
             globals: {
                 let mut globals = NameSpaces::new_root();
@@ -80,7 +74,7 @@ impl<'ctx> SimplifierContext<'ctx> {
     }
 }
 
-impl SimplifierContext<'_> {
+impl SimplifierContext {
     fn simp_item(&mut self, item: GlobalItem) -> GlobalItem {
         let GlobalItem::ConstDef(const_def) = item;
         self.simp_const_def(const_def)

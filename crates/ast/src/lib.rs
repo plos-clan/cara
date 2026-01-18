@@ -48,7 +48,7 @@ impl Hash for ExpId {
 pub struct ParseContext<'ctx> {
     file_table: &'ctx FileTable,
     exp_map: RefCell<HashMap<ExpId, Exp>>,
-    current_file: usize,
+    current_file: RefCell<usize>,
 }
 
 impl ParseContext<'_> {
@@ -59,27 +59,40 @@ impl ParseContext<'_> {
     }
 
     pub fn span(&self, start: usize, end: usize) -> Span {
-        Span(start, end, self.current_file)
+        Span(start, end, *self.current_file.borrow())
     }
 }
 
 impl<'ctx> ParseContext<'ctx> {
-    pub fn new(file_table: &'ctx FileTable, current_file: usize) -> Self {
+    pub fn new(file_table: &'ctx FileTable) -> Self {
         ParseContext {
             file_table,
             exp_map: RefCell::new(HashMap::new()),
-            current_file,
+            current_file: RefCell::new(0),
         }
     }
 
-    pub fn parse<T: Parser>(mut self, parser: T) -> Result<AstContext, T::Error> {
-        let content = self.file_table.read_source(self.current_file).unwrap();
+    pub fn file_table(&self) -> &FileTable {
+        self.file_table
+    }
 
-        let root = parser.parse_content(&mut self, content)?;
+    pub fn parse<T: Parser>(self, parser: &T, file: usize) -> Result<AstContext, T::Error> {
+        let content = self.file_table.read_source(file).unwrap();
+
+        self.current_file.replace(file);
+        let root = parser.parse_content(&self, content)?;
         Ok(AstContext {
             exp_map: self.exp_map.take(),
             root,
         })
+    }
+
+    pub fn parse_module<T: Parser>(&self, parser: &T, file: usize) -> Result<StructType, T::Error> {
+        let content = self.file_table.read_source(file).unwrap();
+
+        self.current_file.replace(file);
+        let root = parser.parse_content(self, content)?;
+        Ok(root)
     }
 }
 
@@ -115,14 +128,14 @@ pub trait Parser {
 
     fn parse_content(
         &self,
-        ctx: &mut ParseContext<'_>,
+        ctx: &ParseContext<'_>,
         content: Arc<String>,
     ) -> Result<StructType, Self::Error>;
 }
 
 pub struct FileTable {
-    file_ids: HashMap<String, usize>,
-    files: HashMap<usize, (String, Arc<String>)>,
+    file_ids: RefCell<HashMap<String, usize>>,
+    files: RefCell<HashMap<usize, (String, Arc<String>)>>,
 }
 
 impl Default for FileTable {
@@ -134,13 +147,13 @@ impl Default for FileTable {
 impl FileTable {
     pub fn new() -> Self {
         Self {
-            file_ids: HashMap::new(),
-            files: HashMap::new(),
+            file_ids: RefCell::new(HashMap::new()),
+            files: RefCell::new(HashMap::new()),
         }
     }
 
-    pub fn register_file(&mut self, path: String) -> std::io::Result<usize> {
-        if let Some(id) = self.file_ids.get(&path) {
+    pub fn register_file(&self, path: String) -> std::io::Result<usize> {
+        if let Some(id) = self.file_ids.borrow().get(&path) {
             return Ok(*id);
         }
 
@@ -148,19 +161,22 @@ impl FileTable {
         File::open(path.clone())?.read_to_string(&mut content)?;
         let content = Arc::new(content);
 
-        let id = self.file_ids.len();
-        self.file_ids.insert(path.clone(), id);
-        self.files.insert(id, (path, content));
+        let id = self.file_ids.borrow().len();
+        self.file_ids.borrow_mut().insert(path.clone(), id);
+        self.files.borrow_mut().insert(id, (path, content));
 
         Ok(id)
     }
 
     pub fn read_source(&self, file: usize) -> Option<Arc<String>> {
-        self.files.get(&file).map(|(_, source)| source.clone())
+        self.files
+            .borrow()
+            .get(&file)
+            .map(|(_, source)| source.clone())
     }
 
     pub fn get_path(&self, file: usize) -> Option<String> {
-        self.files.get(&file).map(|(path, _)| path.clone())
+        self.files.borrow().get(&file).map(|(path, _)| path.clone())
     }
 }
 

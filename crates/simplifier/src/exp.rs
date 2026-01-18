@@ -1,13 +1,12 @@
 use ast::{
     Array, Assign, BinaryOp, Call, Deref, Exp, ExpId, FieldAccess, For, FunctionDef, GetAddr,
-    IfExp, Index, Loop, Module, Param, ParseContext, Path, ProtoDef, Return, Span, Structure, Type,
-    TypeCast, UnaryOp, Var, While,
+    IfExp, Index, Loop, Param, Path, ProtoDef, Return, Span, Structure, TypeCast, UnaryOp, Var,
+    While,
 };
-use parser::CaraParser;
 
 use crate::SimplifierContext;
 
-impl SimplifierContext<'_> {
+impl SimplifierContext {
     pub fn simp_exp(&mut self, exp: ExpId) -> ExpId {
         let exp = self.get_exp(exp).unwrap();
         let result = match exp {
@@ -36,7 +35,6 @@ impl SimplifierContext<'_> {
             Exp::While(while_exp) => self.simp_while(while_exp),
             Exp::Exp(exp, _) => return self.simp_exp(exp),
             Exp::Unary(op, value, span) => self.simp_unary(op, value, span),
-            Exp::Module(module) => Exp::Type(self.simp_module(module)),
             _ => exp,
         };
         self.insert_exp(result)
@@ -316,23 +314,5 @@ impl SimplifierContext<'_> {
             },
             span: var_span,
         })
-    }
-
-    fn simp_module(&mut self, module: Module) -> Type {
-        let Module { path, span: _ } = module;
-
-        let file = self.file_table.register_file(path).unwrap();
-        let ast = ParseContext::new(self.file_table, file)
-            .parse(CaraParser)
-            .unwrap();
-        let (exps, root) = ast.into_tuple();
-        self.origin_exps.push(exps);
-        let span = root.span;
-        let root = self.simp_struct_ty(root);
-        self.origin_exps.pop();
-        Type {
-            kind: ast::TypeEnum::Structure(root),
-            span,
-        }
     }
 }

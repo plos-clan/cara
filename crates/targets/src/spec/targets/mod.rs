@@ -32,10 +32,7 @@ targets! {
 
 impl Target {
     pub fn by_name(name: &str) -> Option<Target> {
-        TARGETS
-            .iter()
-            .find(|(n, _)| *n == name)
-            .map(|(_, t)| t.clone())
+        TARGETS.iter().find(|(n, _)| *n == name).map(|(_, t)| *t)
     }
 }
 

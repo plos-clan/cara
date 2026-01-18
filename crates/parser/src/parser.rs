@@ -19,10 +19,10 @@ impl Parser for CaraParser {
 
     fn parse_content(
         &self,
-        ctx: &mut ParseContext<'_>,
+        ctx: &ParseContext<'_>,
         content: Arc<String>,
     ) -> anyhow::Result<StructType> {
-        cara_parser::module_root(&TokenStream::new(content)?, ctx).map_err(|e| e.into())
+        cara_parser::module_root(&TokenStream::new(content)?, self, ctx).map_err(|e| e.into())
     }
 }
 
@@ -34,7 +34,7 @@ macro_rules! binary_op_rule {
 }
 
 peg::parser! {
-    grammar cara_parser<'s>(parser: &ParseContext<'_>) for TokenStream {
+    grammar cara_parser<'s>(pself: &CaraParser, parser: &ParseContext<'_>) for TokenStream {
         pub rule module_root() -> StructType
         = _ i: struct_inner() _ {
             i
@@ -249,7 +249,10 @@ peg::parser! {
                     }))
                 }
                 --
-                m: module() { parser.insert_exp(Exp::Module(m)) }
+                m: module() {
+                    let (span, m) = m;
+                    parser.insert_exp(Exp::Type(Type { kind: TypeEnum::Structure(m), span }))
+                }
                 t: type_() { parser.insert_exp(Exp::Type(t)) }
                 f: for_exp() { parser.insert_exp(Exp::For(f)) }
                 l: loop_exp() { parser.insert_exp(Exp::Loop(l)) }
@@ -326,10 +329,14 @@ peg::parser! {
                 }
             }
 
-        rule module() -> Module
+        rule module() -> (Span, StructType)
              = s: position!() "mod" __ path: string() e: position!() {
-                 Module { path, span: parser.span(s, e) }
-        }
+                 let file = parser.file_table().register_file(path).unwrap();
+                 (
+                     parser.span(s, e),
+                     parser.parse_module(pself, file).unwrap()
+                 )
+             }
 
         rule string_wrapper() -> Exp
              = s: position!() string: string() e: position!() {

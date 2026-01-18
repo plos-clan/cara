@@ -1,7 +1,8 @@
 #![feature(iter_intersperse)]
+#![allow(unused)]
 
-pub mod spec;
 pub mod linker;
+pub mod spec;
 
 macro_rules! target_spec_enum {
     (

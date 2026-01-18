@@ -2,7 +2,7 @@ use ast::{Block, BlockItem, Statement, VarDef};
 
 use crate::SimplifierContext;
 
-impl SimplifierContext<'_> {
+impl SimplifierContext {
     pub fn simp_block(&mut self, block: Block) -> Block {
         self.locals.push_scope();
         let items = block
