@@ -1,0 +1,8 @@
+const main = extern C[main] fn() -> i32 {
+    entry()
+};
+
+const entry = extern C[_start] fn() -> i32 {
+    0i32
+};
+

@@ -1,8 +1,4 @@
-use std::{
-    cell::LazyCell,
-    process::{Command, exit},
-    sync::Arc,
-};
+use std::{cell::LazyCell, path::Path, process::exit, sync::Arc};
 
 use analyzer::queries::CHECK_CONST_DEF;
 use anyhow::bail;
@@ -12,7 +8,10 @@ use codegen_llvm::LLVMBackend;
 use parser::CaraParser;
 use query::QueryContext;
 use simplifier::simplify;
-use targets::spec::Target;
+use targets::{
+    linker::{Cc, LinkerFlavor, Lld, get_linker},
+    spec::{Os, Target, TargetEnv},
+};
 use tempfile::NamedTempFile;
 
 use args::*;
@@ -95,14 +94,36 @@ fn main() -> anyhow::Result<()> {
             codegen_result.emit(emit_options);
 
             if matches!(emit, BuildResult::Executable) {
-                let mut child = Command::new("gcc");
-                child.arg("-o").arg(output_file).arg(temp_file.path());
+                let flavor = match target.os {
+                    Os::Windows => match target.env {
+                        TargetEnv::Msvc => LinkerFlavor::Msvc(Lld::No),
+                        _ => LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+                    },
+                    Os::None => LinkerFlavor::Gnu(Cc::No, Lld::Yes),
+                    Os::MacOs => LinkerFlavor::Darwin(Cc::Yes, Lld::No),
+                    _ => LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+                };
 
-                if matches!(reloc_mode, RelocMode::Static) {
-                    child.arg("-static");
+                let mut linker = get_linker(
+                    Path::new(if flavor.uses_cc() {
+                        "cc"
+                    } else if flavor.uses_lld() {
+                        "lld"
+                    } else {
+                        "ld"
+                    }),
+                    flavor,
+                    target,
+                );
+                linker.add_object(temp_file.path());
+                linker.output_filename(Path::new(&output_file));
+                if matches!(target.os, Os::None) {
+                    linker.set_no_stdlib();
                 }
 
-                if !child.spawn()?.wait()?.success() {
+                let child = linker.cmd();
+
+                if !child.command().spawn()?.wait()?.success() {
                     anyhow::bail!("Failed to link executable");
                 }
             }

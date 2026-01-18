@@ -4,3 +4,5 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+find-msvc-tools = "0.1.8"
+libc = "0.2.180"

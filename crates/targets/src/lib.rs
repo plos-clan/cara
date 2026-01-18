@@ -1,5 +1,4 @@
 #![feature(iter_intersperse)]
-#![allow(unused)]
 
 pub mod linker;
 pub mod spec;
