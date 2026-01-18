@@ -11,6 +11,7 @@ parser = { path = "./crates/parser" }
 query = { path = "./crates/query" }
 monomorphize = { path = "./crates/monomorphize" }
 targets = { path = "./crates/targets" }
+type_infer = { path = "./crates/type_infer" }
 anyhow = "1.0.100"
 
 [workspace]
