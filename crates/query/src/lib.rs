@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::HashMap, hash::Hash, sync::Arc};
 
 use ast::{AstContext, ConstDef, GlobalItem};
 use bon::bon;
@@ -14,7 +14,7 @@ pub struct QueryContext {
     crate_name: String,
     target: Target,
     ast_ctx: Arc<AstContext>,
-    consts: BTreeMap<DefId, Arc<ConstDef>>,
+    consts: HashMap<DefId, Arc<ConstDef>>,
     thread_pool: ThreadPool,
 }
 
@@ -22,7 +22,7 @@ pub struct QueryContext {
 impl QueryContext {
     #[builder]
     pub fn new(crate_name: String, target: Target, ast: Arc<AstContext>) -> Arc<Self> {
-        let mut consts = BTreeMap::new();
+        let mut consts = HashMap::new();
         for GlobalItem::ConstDef(const_def) in ast.root.members.iter() {
             let id = DefId(consts.len());
             consts.insert(id, const_def.clone());
@@ -65,7 +65,7 @@ impl QueryContext {
         Some(self.thread_pool.install(|| (provider.f)(self.clone(), arg)))
     }
 
-    pub fn query_cached<A: Ord + Send + Sync + Clone, R: Send + Sync + Clone>(
+    pub fn query_cached<A: Hash + Eq + Send + Sync + Clone, R: Send + Sync + Clone>(
         self: &Arc<Self>,
         provider: &Provider<A, R>,
         arg: A,

@@ -1,7 +1,7 @@
 use ast::{Array, Span, StructType, TypeEnum, visitor::ExpVisitor};
 use const_eval::{ValueKind, queries::CONST_EVAL_PROVIDER};
 
-use crate::MonomorphizeContext;
+use crate::{CodegenItem, MonomorphizeContext};
 
 impl ExpVisitor<()> for MonomorphizeContext {
     fn ast_ctx(&self) -> std::sync::Arc<ast::AstContext> {
@@ -64,8 +64,15 @@ impl ExpVisitor<()> for MonomorphizeContext {
         if !self.locals.contains(&name) {
             let def_id = self.ctx.lookup_def_id(name).unwrap();
             let result = self.ctx.query_cached(&CONST_EVAL_PROVIDER, def_id).unwrap();
-            if matches!(result.kind(), ValueKind::Function(_) | ValueKind::Proto(_)) {
-                self.required_items.push(def_id);
+            match result.kind() {
+                ValueKind::Function(func) => {
+                    self.required_items.insert(CodegenItem::Func(func.clone()));
+                }
+                ValueKind::Proto(proto) => {
+                    self.required_items
+                        .insert(CodegenItem::Proto(proto.clone()));
+                }
+                _ => {}
             }
         }
     }

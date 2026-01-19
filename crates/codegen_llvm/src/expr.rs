@@ -6,7 +6,7 @@ use inkwell::{
 };
 
 use ast::{Array, BinaryOp, Call, Span, TypeEnum, Var, visitor::ExpVisitor};
-use query::DefId;
+use monomorphize::CodegenItem;
 use uuid::Uuid;
 
 use crate::{
@@ -197,7 +197,7 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
                 .query_cached(&CONST_EVAL_PROVIDER, def_id)
                 .unwrap();
 
-            self.const_value_to_llvm_value(Some(def_id), &value)
+            self.const_value_to_llvm_value(&value)
         }
     }
 
@@ -309,15 +309,18 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
 }
 
 impl<'v> VisitorCtx<'v> {
-    fn const_value_to_llvm_value(
-        &mut self,
-        def_id: Option<DefId>,
-        value: &const_eval::Value,
-    ) -> Value<'v> {
+    fn const_value_to_llvm_value(&mut self, value: &const_eval::Value) -> Value<'v> {
         match value.kind() {
-            const_eval::ValueKind::Function(_) | const_eval::ValueKind::Proto(_) => {
-                self.global_funcs.get(&def_id.unwrap()).unwrap().clone()
-            }
+            const_eval::ValueKind::Function(f) => self
+                .global_funcs
+                .get(&CodegenItem::Func(f))
+                .unwrap()
+                .clone(),
+            const_eval::ValueKind::Proto(p) => self
+                .global_funcs
+                .get(&CodegenItem::Proto(p))
+                .unwrap()
+                .clone(),
             const_eval::ValueKind::Int(i) => {
                 const_eval_type_to_llvm_type(self.queries.clone(), &value.ty()).const_int(i)
             }
@@ -335,7 +338,7 @@ impl<'v> VisitorCtx<'v> {
                 for id in 0..field_ids.len() {
                     let name = field_ids.get(&id).unwrap();
                     let value = self
-                        .const_value_to_llvm_value(None, fields.get(name).unwrap())
+                        .const_value_to_llvm_value(fields.get(name).unwrap())
                         .as_basic_value_enum();
                     field_values.push(value);
                 }

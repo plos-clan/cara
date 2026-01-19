@@ -175,7 +175,7 @@ impl<'v> From<Value<'v>> for BasicMetadataValueEnum<'v> {
             Value::Pointer { value, .. } => value.into(),
             Value::Array { value, .. } => value.into(),
             Value::Structure { value, .. } => value.into(),
-            _ => unreachable!(),
+            _ => panic!("Creating BasicMetadataValueEnum from {:?}", value),
         }
     }
 }

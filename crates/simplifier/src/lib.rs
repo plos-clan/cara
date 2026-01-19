@@ -33,7 +33,7 @@ pub fn simplify(crate_name: String, ast: AstContext) -> AstContext {
 }
 
 struct SimplifierContext {
-    origin_exps: Vec<HashMap<ExpId, Exp>>,
+    origin_exps: HashMap<ExpId, Exp>,
     crate_name: String,
     globals: NameSpaces,
     locals: SymbolTable<String>,
@@ -44,7 +44,7 @@ struct SimplifierContext {
 impl SimplifierContext {
     fn new(crate_name: String, origin_exps: HashMap<ExpId, Exp>) -> Self {
         Self {
-            origin_exps: vec![origin_exps],
+            origin_exps,
             crate_name: crate_name.clone(),
             globals: {
                 let mut globals = NameSpaces::new_root();
@@ -70,7 +70,7 @@ impl SimplifierContext {
     }
 
     fn get_exp(&mut self, id: ExpId) -> Option<Exp> {
-        self.origin_exps.last_mut().unwrap().remove(&id)
+        self.origin_exps.remove(&id)
     }
 }
 

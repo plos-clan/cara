@@ -3,32 +3,44 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use ast::visitor::ExpVisitor;
-use const_eval::{ValueKind, queries::CONST_EVAL_PROVIDER};
-use query::{DefId, Provider, QueryContext};
+use ast::{FunctionDef, visitor::ExpVisitor};
+use const_eval::queries::CONST_EVAL_PROVIDER;
+use query::{Provider, QueryContext};
 use symbol_table::SymbolTable;
 
-use crate::MonomorphizeContext;
+use crate::{CodegenItem, MonomorphizeContext};
 
-pub static COLLECT_CODEGEN_UNITS: LazyLock<Provider<(), Vec<DefId>>> =
+pub static COLLECT_CODEGEN_UNITS: LazyLock<Provider<(), Vec<CodegenItem>>> =
     LazyLock::new(|| Provider::new(collect_codegen_units));
 
-fn collect_codegen_units(ctx: Arc<QueryContext>, (): ()) -> Vec<DefId> {
+fn collect_codegen_units(ctx: Arc<QueryContext>, (): ()) -> Vec<CodegenItem> {
     let initial = ctx.main_fn_id();
+    let const_eval::ValueKind::Function(initial) = ctx
+        .query_cached(&CONST_EVAL_PROVIDER, initial)
+        .unwrap()
+        .kind()
+    else {
+        return Vec::new();
+    };
+    let initial = CodegenItem::Func(initial);
+
     let mut required = HashSet::new();
 
-    required.insert(initial);
+    required.insert(initial.clone());
 
     let mut new_ones = vec![initial];
 
     while !new_ones.is_empty() {
         let mut new_new_ones = Vec::new();
         for new_one in new_ones.iter() {
-            let collected = collect_required_items(ctx.clone(), *new_one);
-            for def_id in collected {
-                if !required.contains(&def_id) {
-                    required.insert(def_id);
-                    new_new_ones.push(def_id);
+            let CodegenItem::Func(new_one) = new_one else {
+                continue;
+            };
+            let collected = collect_required_items(ctx.clone(), new_one.clone());
+            for item in collected {
+                if !required.contains(&item) {
+                    required.insert(item.clone());
+                    new_new_ones.push(item);
                 }
             }
         }
@@ -36,21 +48,17 @@ fn collect_codegen_units(ctx: Arc<QueryContext>, (): ()) -> Vec<DefId> {
         new_ones = new_new_ones;
     }
 
-    required.iter().copied().collect()
+    required.into_iter().collect()
 }
 
-fn collect_required_items(ctx: Arc<QueryContext>, def_id: DefId) -> Vec<DefId> {
-    let Some(ValueKind::Function(func_def)) = ctx
-        .query_cached(&CONST_EVAL_PROVIDER, def_id)
-        .map(|v| v.kind())
-    else {
-        return Vec::new();
-    };
-
+fn collect_required_items(
+    ctx: Arc<QueryContext>,
+    func_def: Arc<FunctionDef>,
+) -> HashSet<CodegenItem> {
     let mut visitor_ctx = MonomorphizeContext {
         ctx,
         locals: SymbolTable::new(),
-        required_items: Vec::new(),
+        required_items: HashSet::new(),
     };
 
     for param in &func_def.params {

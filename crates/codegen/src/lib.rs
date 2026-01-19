@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use bon::Builder;
-use monomorphize::queries::COLLECT_CODEGEN_UNITS;
-use query::{DefId, QueryContext};
+use monomorphize::{CodegenItem, queries::COLLECT_CODEGEN_UNITS};
+use query::QueryContext;
 
 #[derive(Debug, Clone, Copy)]
 pub enum OutputType {
@@ -60,7 +60,11 @@ pub trait CodegenBackendBase {
 }
 
 pub trait CodegenBackend {
-    fn codegen(&self, ctx: Arc<QueryContext>, codegen_units: Vec<DefId>) -> Box<dyn CodegenResult>;
+    fn codegen(
+        &self,
+        ctx: Arc<QueryContext>,
+        codegen_units: Vec<CodegenItem>,
+    ) -> Box<dyn CodegenResult>;
 }
 
 pub fn codegen(ctx: Arc<QueryContext>, backend: &dyn CodegenBackend) -> Box<dyn CodegenResult> {

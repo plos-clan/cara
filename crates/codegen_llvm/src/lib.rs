@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::HashMap,
     ops::Deref,
     path::Path,
     sync::{Arc, LazyLock},
@@ -9,7 +9,6 @@ use ast::{ExpId, FunctionDef, Param, ProtoDef, visitor::BlockVisitor};
 use codegen::{
     BackendOptions, CodegenBackend, CodegenBackendBase, CodegenResult, EmitOptions, OutputType,
 };
-use const_eval::queries::CONST_EVAL_PROVIDER;
 use inkwell::{
     OptimizationLevel,
     builder::Builder,
@@ -21,7 +20,8 @@ use inkwell::{
         CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
     },
 };
-use query::{DefId, QueryContext};
+use monomorphize::CodegenItem;
+use query::QueryContext;
 use symbol_table::SymbolTable;
 use uuid::Uuid;
 
@@ -66,14 +66,18 @@ impl CodegenBackendBase for LLVMBackend {
 }
 
 impl CodegenBackend for LLVMBackend {
-    fn codegen(&self, ctx: Arc<QueryContext>, codegen_units: Vec<DefId>) -> Box<dyn CodegenResult> {
+    fn codegen(
+        &self,
+        ctx: Arc<QueryContext>,
+        codegen_units: Vec<CodegenItem>,
+    ) -> Box<dyn CodegenResult> {
         let (module, global_funcs) = Self::generate_defs(ctx.clone(), &codegen_units);
 
         let global_funcs = Arc::new(global_funcs);
         let module = Arc::new(module);
 
-        for def_id in codegen_units {
-            Self::codegen_item(ctx.clone(), def_id, global_funcs.clone(), module.clone());
+        for item in codegen_units {
+            Self::codegen_item(ctx.clone(), &item, global_funcs.clone(), module.clone());
         }
 
         Box::new(LLVMCodegenResult::new(
@@ -87,18 +91,13 @@ impl CodegenBackend for LLVMBackend {
 impl LLVMBackend {
     fn generate_defs(
         ctx: Arc<QueryContext>,
-        codegen_units: &[DefId],
+        codegen_units: &[CodegenItem],
     ) -> (Module<'static>, FunctionMap) {
-        let mut global_funcs = BTreeMap::new();
+        let mut global_funcs = HashMap::new();
         let module = LLVM_CONTEXT.create_module("main");
 
         for unit in codegen_units.iter() {
-            let value = ctx
-                .query_cached(&CONST_EVAL_PROVIDER, *unit)
-                .unwrap()
-                .kind();
-
-            if let const_eval::ValueKind::Proto(proto) = value {
+            if let CodegenItem::Proto(proto) = unit {
                 let ProtoDef {
                     abi,
                     params,
@@ -118,12 +117,12 @@ impl LLVMBackend {
                 function_value.set_call_conventions(LLVMCallConv::LLVMCCallConv as u32);
                 let function = Value::Function(function_value, return_type);
 
-                global_funcs.insert(*unit, function);
+                global_funcs.insert(unit.clone(), function);
 
                 continue;
             }
 
-            let const_eval::ValueKind::Function(func) = value else {
+            let CodegenItem::Func(func) = unit else {
                 panic!("Expected function value");
             };
             let FunctionDef {
@@ -144,7 +143,7 @@ impl LLVMBackend {
             function_value.set_call_conventions(LLVMCallConv::LLVMCCallConv as u32);
             let function = Value::Function(function_value, return_type);
 
-            let entry = global_funcs.entry(*unit);
+            let entry = global_funcs.entry(unit.clone());
             entry.insert_entry(function);
         }
 
@@ -173,20 +172,16 @@ impl LLVMBackend {
 
     fn codegen_item(
         ctx: Arc<QueryContext>,
-        def_id: DefId,
+        item: &CodegenItem,
         global_funcs: Arc<FunctionMap>,
         module: Arc<Module<'static>>,
     ) {
-        let const_eval::ValueKind::Function(func) = ctx
-            .query_cached(&CONST_EVAL_PROVIDER, def_id)
-            .unwrap()
-            .kind()
-        else {
+        let CodegenItem::Func(func) = item else {
             return;
         };
         let FunctionDef { params, block, .. } = func.as_ref();
 
-        let func_value = global_funcs.get(&def_id).cloned().unwrap();
+        let func_value = global_funcs.get(item).cloned().unwrap();
         let function = func_value.as_fn();
         let entry_block = LLVM_CONTEXT.append_basic_block(function, "entry");
 
@@ -233,7 +228,7 @@ impl LLVMBackend {
     }
 }
 
-type FunctionMap = BTreeMap<DefId, Value<'static>>;
+type FunctionMap = HashMap<CodegenItem, Value<'static>>;
 
 pub struct LLVMCodegenResult {
     module: Arc<Module<'static>>,
@@ -339,7 +334,7 @@ struct VisitorCtx<'v> {
     module: Arc<Module<'static>>,
     queries: Arc<QueryContext>,
     current_fn: Value<'v>,
-    global_funcs: Arc<BTreeMap<DefId, Value<'v>>>,
+    global_funcs: Arc<HashMap<CodegenItem, Value<'v>>>,
 }
 
 impl<'v> VisitorCtx<'v> {

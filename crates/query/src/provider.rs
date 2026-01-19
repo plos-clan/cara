@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::HashMap,
     sync::{Arc, RwLock},
 };
 
@@ -12,7 +12,7 @@ type ProviderFn<A, R> = Box<dyn Fn(Arc<QueryContext>, A) -> R + Send + Sync>;
 
 pub struct Provider<A, R> {
     pub(crate) f: ProviderFn<A, R>,
-    pub(crate) cache: RwLock<BTreeMap<A, R>>,
+    pub(crate) cache: RwLock<HashMap<A, R>>,
 }
 
 impl<A, R> Provider<A, R> {
@@ -22,7 +22,7 @@ impl<A, R> Provider<A, R> {
     {
         Self {
             f: Box::new(f),
-            cache: RwLock::new(BTreeMap::new()),
+            cache: RwLock::new(HashMap::new()),
         }
     }
 }
