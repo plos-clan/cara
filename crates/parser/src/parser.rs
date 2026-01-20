@@ -331,7 +331,9 @@ peg::parser! {
 
         rule module() -> (Span, StructType)
              = s: position!() "mod" __ path: string() e: position!() {
-                 let file = parser.file_table().register_file(path).unwrap();
+                 let Ok(file) = parser.file_table().register_file(path.clone()) else {
+                     panic!("Failed to read {}!", path);
+                 };
                  (
                      parser.span(s, e),
                      parser.parse_module(pself, file).unwrap()
