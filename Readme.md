@@ -21,3 +21,5 @@ Currently in development.
 
 ## Example
 [main.cara](main.cara)
+> [!NOTE]
+> main.cara depends on [module.cara](module.cara).
