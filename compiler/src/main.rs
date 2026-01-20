@@ -3,6 +3,7 @@ use std::{cell::LazyCell, path::Path, process::exit, sync::Arc};
 use analyzer::queries::CHECK_CONST_DEF;
 use anyhow::bail;
 use ast::{FileTable, ParseContext};
+use clap::Parser;
 use codegen::{BackendOptions, CodegenBackendBase, EmitOptions, OutputType, codegen};
 use codegen_llvm::LLVMBackend;
 use parser::CaraParser;
@@ -19,10 +20,10 @@ use args::*;
 mod args;
 
 fn main() -> anyhow::Result<()> {
-    let args = argh::from_env::<Args>();
+    let args = Args::parse();
 
     match args.nested {
-        Subcommand::Build(build) => {
+        CaracSubcommand::Build(build) => {
             let BuildCommand {
                 input_file,
                 output_file,

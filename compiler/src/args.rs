@@ -1,87 +1,71 @@
-use argh::{FromArgValue, FromArgs};
+use clap::{Parser, Subcommand, ValueEnum, crate_version};
 
 /// Cara compiler
-#[derive(FromArgs)]
+#[derive(Debug, Parser)]
+#[clap(version = crate_version!())]
+#[clap(about)]
 pub struct Args {
-    #[argh(subcommand)]
-    pub nested: Subcommand,
+    #[clap(subcommand)]
+    pub nested: CaracSubcommand,
 }
 
-#[derive(FromArgs)]
-#[argh(subcommand)]
-pub enum Subcommand {
+#[derive(Debug, Subcommand)]
+pub enum CaracSubcommand {
     Build(BuildCommand),
 }
 
 /// Builds the cara file.
-#[derive(FromArgs)]
-#[argh(subcommand, name = "build")]
+#[derive(Debug, Parser)]
 pub struct BuildCommand {
-    #[argh(positional)]
+    /// the input file.
     pub input_file: String,
     /// set if build in release mode.
-    #[argh(switch)]
+    #[arg(short, long)]
     pub release: bool,
     /// the output path.
-    #[argh(option, default = "String::from(\"a.out\")", short = 'o')]
+    #[arg(short, long, default_value = "a.out")]
     pub output_file: String,
     /// the file type emitted.
-    #[argh(option, default = "BuildResult::Executable")]
+    #[arg(long, value_enum, default_value = "exe")]
     pub emit: BuildResult,
     /// code model.
-    #[argh(option, default = "CodeModel::Default")]
+    #[arg(long, value_enum, default_value = "default")]
     pub code_model: CodeModel,
     /// optimization level.
-    #[argh(option, default = "OptimizeLevel::O2", short = 'O')]
+    #[arg(long, value_enum, default_value = "O2")]
     pub optimize_level: OptimizeLevel,
     /// relocation mode.
-    #[argh(option, default = "RelocMode::Default")]
+    #[arg(long, value_enum, default_value = "default")]
     pub reloc_mode: RelocMode,
     /// crate name.
-    #[argh(option, default = r#""main".into()"#)]
+    #[arg(long, default_value = r#"main"#)]
     pub crate_name: String,
     /// target triple.
-    #[argh(option)]
+    #[arg(long)]
     pub target: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum BuildResult {
+    /// Emit LLVM IR.
     Ir,
+    /// Emit assembly.
     Asm,
+    /// Emit object file.
+    #[value(name = "obj")]
     Object,
+    /// Emit executable.
+    #[value(name = "exe")]
     Executable,
 }
 
-impl FromArgValue for BuildResult {
-    fn from_arg_value(value: &str) -> Result<Self, String> {
-        Ok(match value {
-            "ir" => Self::Ir,
-            "asm" => Self::Asm,
-            "obj" => Self::Object,
-            "exe" => Self::Executable,
-            _ => return Err(format!("Invalid build result type: {}", value)),
-        })
-    }
-}
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum CodeModel {
     Large,
     Medium,
     Small,
     Kernel,
     Default,
-}
-
-impl FromArgValue for CodeModel {
-    fn from_arg_value(value: &str) -> Result<Self, String> {
-        Ok(match value {
-            "large" => Self::Large,
-            "small" => Self::Small,
-            "kernel" => Self::Kernel,
-            "default" => Self::Default,
-            _ => return Err(format!("Invalid code model: {}", value)),
-        })
-    }
 }
 
 impl From<CodeModel> for codegen::CodeModel {
@@ -96,23 +80,13 @@ impl From<CodeModel> for codegen::CodeModel {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[value(rename_all = "UPPER")]
 pub enum OptimizeLevel {
     O0,
     O1,
     O2,
     O3,
-}
-
-impl FromArgValue for OptimizeLevel {
-    fn from_arg_value(value: &str) -> Result<Self, String> {
-        Ok(match value {
-            "0" => Self::O0,
-            "1" => Self::O1,
-            "2" => Self::O2,
-            "3" => Self::O3,
-            _ => return Err(format!("Invalid optimize level: {}", value)),
-        })
-    }
 }
 
 impl From<OptimizeLevel> for codegen::OptimizeLevel {
@@ -126,24 +100,12 @@ impl From<OptimizeLevel> for codegen::OptimizeLevel {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum RelocMode {
     Default,
     Static,
     Pic,
     DynamicNoPic,
-}
-
-impl FromArgValue for RelocMode {
-    fn from_arg_value(value: &str) -> Result<Self, String> {
-        Ok(match value {
-            "default" => Self::Default,
-            "static" => Self::Static,
-            "pic" => Self::Pic,
-            "dynamic-nopic" => Self::DynamicNoPic,
-            _ => return Err(format!("Invalid reloc mode: {}", value)),
-        })
-    }
 }
 
 impl From<RelocMode> for codegen::RelocMode {

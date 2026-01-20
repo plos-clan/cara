@@ -8,13 +8,13 @@ parser.workspace = true
 anyhow.workspace = true
 codegen.workspace = true
 query.workspace = true
-argh = "0.1.13"
 codegen_llvm = { path = "../crates/codegen_llvm" }
 tempfile = "3.24.0"
 analyzer.workspace = true
 simplifier = { path = "../crates/simplifier" }
 ast.workspace = true
 targets.workspace = true
+clap = { version = "4.5.54", features = ["cargo", "derive"] }
 
 [features]
 trace = ["parser/trace"]
