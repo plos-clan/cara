@@ -3,6 +3,19 @@
 Cara is a kind of simple, statically typed programming language, inspired by Rust and Zig.
 Currently in development.
 
+## Example
+[main.cara](main.cara)
+You can build this with the following command:
+``` sh
+carac build main.cara -o main.bin
+```
+Then you can execute it:
+``` sh
+./main.bin
+```
+> [!NOTE]
+> main.cara depends on [module.cara](module.cara).
+
 ## Roadmap
 - [x] Basic syntax and ast.
 - [x] Basic const evaluation.
@@ -18,8 +31,3 @@ Currently in development.
 - [ ] Light weight procedural macros.
 - [ ] LSP.
 - [ ] Incremental compilation
-
-## Example
-[main.cara](main.cara)
-> [!NOTE]
-> main.cara depends on [module.cara](module.cara).
