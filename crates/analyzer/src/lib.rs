@@ -20,6 +20,7 @@ struct AnalyzerContext {
     warnings: Vec<(Warning, Span)>,
     required: Vec<DefId>,
     ret_ty: Option<Type>,
+    in_loop: bool,
 }
 
 impl AnalyzerContext {
@@ -31,6 +32,7 @@ impl AnalyzerContext {
             warnings: Vec::new(),
             required: Vec::new(),
             ret_ty,
+            in_loop: false,
         }
     }
 
@@ -41,6 +43,10 @@ impl AnalyzerContext {
     #[allow(unused)]
     fn warning_at(&mut self, w: Warning, s: Span) {
         self.warnings.push((w, s));
+    }
+
+    fn toggle_in_loop(&mut self) {
+        self.in_loop = !self.in_loop;
     }
 }
 

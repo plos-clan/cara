@@ -55,6 +55,8 @@ pub enum Exp {
     TypeCast(TypeCast),
     Structure(Structure),
     FieldAccess(FieldAccess),
+    Break(Span),
+    Continue(Span),
 }
 
 impl Exp {
@@ -85,6 +87,8 @@ impl Exp {
             Self::TypeCast(type_cast) => type_cast.span,
             Self::Structure(structure) => structure.span,
             Self::FieldAccess(field_access) => field_access.span,
+            Self::Break(span) => *span,
+            Self::Continue(span) => *span,
         }
     }
 }

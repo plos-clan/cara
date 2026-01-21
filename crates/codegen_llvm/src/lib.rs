@@ -11,6 +11,7 @@ use codegen::{
 };
 use inkwell::{
     OptimizationLevel,
+    basic_block::BasicBlock,
     builder::Builder,
     context::Context,
     llvm_sys::LLVMCallConv,
@@ -195,6 +196,7 @@ impl LLVMBackend {
             queries: ctx.clone(),
             current_fn: func_value,
             global_funcs,
+            loop_blocks: Vec::new(),
         };
 
         for (id, param) in params.iter().enumerate() {
@@ -335,6 +337,7 @@ struct VisitorCtx<'v> {
     queries: Arc<QueryContext>,
     current_fn: Value<'v>,
     global_funcs: Arc<HashMap<CodegenItem, Value<'v>>>,
+    loop_blocks: Vec<(BasicBlock<'v>, BasicBlock<'v>)>,
 }
 
 impl<'v> VisitorCtx<'v> {
@@ -372,5 +375,17 @@ impl<'v> VisitorCtx<'v> {
             init.init_alloca(ptr, &self.builder);
         }
         alloca
+    }
+
+    fn current_loop(&self) -> Option<(BasicBlock<'v>, BasicBlock<'v>)> {
+        self.loop_blocks.last().copied()
+    }
+
+    fn push_loop(&mut self, entry: BasicBlock<'v>, exit: BasicBlock<'v>) {
+        self.loop_blocks.push((entry, exit));
+    }
+
+    fn pop_loop_block(&mut self) {
+        self.loop_blocks.pop();
     }
 }

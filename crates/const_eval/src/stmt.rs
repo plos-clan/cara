@@ -26,4 +26,12 @@ impl StatementVisitor<Value> for ConstEvalContext {
     fn visit_while(&mut self, _while_: &ast::While) -> Value {
         unimplemented!()
     }
+
+    fn visit_break(&mut self, _span: ast::Span) -> Value {
+        unimplemented!()
+    }
+
+    fn visit_continue(&mut self, _span: ast::Span) -> Value {
+        unimplemented!()
+    }
 }

@@ -56,7 +56,10 @@ impl StatementVisitor<Value> for AnalyzerContext {
         self.symbols
             .pre_push(Symbol::Var(var.clone(), false, start_val));
 
+        self.toggle_in_loop();
         let block_ret_type = self.visit_block(body).into_type();
+        self.toggle_in_loop();
+
         if block_ret_type != Type::Unit {
             self.error_at(
                 Error::TypeMismatch(Type::Unit, block_ret_type),
@@ -103,7 +106,9 @@ impl StatementVisitor<Value> for AnalyzerContext {
     }
 
     fn visit_loop(&mut self, loop_: &ast::Loop) -> Value {
+        self.toggle_in_loop();
         let loop_ret_ty = self.visit_block(&loop_.body).into_type();
+        self.toggle_in_loop();
         if !loop_ret_ty.is_unit() {
             self.error_at(
                 Error::TypeMismatch(Type::Unit, loop_ret_ty),
@@ -148,7 +153,10 @@ impl StatementVisitor<Value> for AnalyzerContext {
             );
         }
 
+        self.toggle_in_loop();
         let loop_ret_ty = self.visit_block(body).into_type();
+        self.toggle_in_loop();
+
         if !loop_ret_ty.is_unit() {
             self.error_at(
                 Error::TypeMismatch(Type::Unit, loop_ret_ty),
@@ -156,5 +164,19 @@ impl StatementVisitor<Value> for AnalyzerContext {
             );
         }
         Value::new(Type::Unit)
+    }
+
+    fn visit_break(&mut self, span: ast::Span) -> Value {
+        if !self.in_loop {
+            self.error_at(Error::BreakOutsideLoop, span);
+        }
+        Value::default()
+    }
+
+    fn visit_continue(&mut self, span: ast::Span) -> Value {
+        if !self.in_loop {
+            self.error_at(Error::ContinueOutsideLoop, span);
+        }
+        Value::default()
     }
 }

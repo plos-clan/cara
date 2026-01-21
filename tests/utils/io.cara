@@ -1,0 +1,10 @@
+const printf = proto C[printf] fn(format: *i8, a: i64) -> i32;
+const scanf = proto C[scanf] fn(format: *i8, a: *i64) -> i32;
+
+const print_num = fn(num: i64) {
+    printf("%d\n", num);
+};
+
+const scan_num = fn(num: *i64) {
+    scanf("%d", num);
+};

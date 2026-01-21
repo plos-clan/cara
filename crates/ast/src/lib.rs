@@ -57,6 +57,12 @@ impl ParseContext<'_> {
         self.exp_map.borrow_mut().insert(id, exp);
         id
     }
+    
+    pub fn find_module(&self, path: &str) -> Option<String> {
+        let current_path = self.file_table().get_path(*self.current_file.borrow())?;
+        let path = std::path::Path::new(&current_path).parent()?.join(path);
+        path.exists().then_some(path.to_string_lossy().into_owned())
+    }
 
     pub fn span(&self, start: usize, end: usize) -> Span {
         Span(start, end, *self.current_file.borrow())
@@ -90,8 +96,9 @@ impl<'ctx> ParseContext<'ctx> {
     pub fn parse_module<T: Parser>(&self, parser: &T, file: usize) -> Result<StructType, T::Error> {
         let content = self.file_table.read_source(file).unwrap();
 
-        self.current_file.replace(file);
+        let current_file = self.current_file.replace(file);
         let root = parser.parse_content(self, content)?;
+        self.current_file.replace(current_file);
         Ok(root)
     }
 }

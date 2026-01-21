@@ -26,6 +26,10 @@ pub enum Error {
     Unknown(String),
     #[error("{0}")]
     Custom(String),
+    #[error("Break statement outside of loop")]
+    BreakOutsideLoop,
+    #[error("Continue statement outside of loop")]
+    ContinueOutsideLoop,
 }
 
 #[derive(Debug, Error)]

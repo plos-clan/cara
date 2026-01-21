@@ -54,6 +54,8 @@ pub trait ExpVisitor<V>: StatementVisitor<V> {
             Exp::Structure(structure) => self.visit_structure(structure),
             Exp::FieldAccess(field_access) => self.visit_field_access(field_access),
             Exp::Type(type_) => self.visit_type(type_),
+            Exp::Break(span) => self.visit_break(*span),
+            Exp::Continue(span) => self.visit_continue(*span),
         }
     }
 
@@ -94,6 +96,8 @@ pub trait StatementVisitor<V> {
     fn visit_for(&mut self, for_: &For) -> V;
     fn visit_loop(&mut self, loop_: &Loop) -> V;
     fn visit_while(&mut self, while_: &While) -> V;
+    fn visit_break(&mut self, span: Span) -> V;
+    fn visit_continue(&mut self, span: Span) -> V;
 }
 
 pub trait BlockVisitor<V>: ExpVisitor<V> {

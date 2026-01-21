@@ -42,4 +42,7 @@ impl StatementVisitor<()> for MonomorphizeContext {
             self.visit_if_exp(else_if_exp);
         }
     }
+
+    fn visit_break(&mut self, _span: ast::Span) {}
+    fn visit_continue(&mut self, _span: ast::Span) {}
 }

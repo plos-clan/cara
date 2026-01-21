@@ -63,7 +63,9 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
 
         self.builder.position_at_end(then_block);
         let then_value = self.visit_block(&if_exp.then_branch);
-        self.builder.build_unconditional_branch(end_block).unwrap();
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            self.builder.build_unconditional_branch(end_block).unwrap();
+        }
 
         self.builder.position_at_end(else_block);
         let (else_present, else_value) = if let Some(else_block) = if_exp.else_branch.as_ref() {
@@ -75,7 +77,9 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
         } else {
             (false, Value::Unit)
         };
-        self.builder.build_unconditional_branch(end_block).unwrap();
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            self.builder.build_unconditional_branch(end_block).unwrap();
+        }
 
         self.builder.position_at_end(end_block);
         if else_present && !matches!(then_value, Value::Unit) {
@@ -99,8 +103,12 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
         self.builder.build_unconditional_branch(loop_block).unwrap();
 
         self.builder.position_at_end(loop_block);
+        self.push_loop(loop_block, end_block);
         self.visit_block(&loop_.body);
-        self.builder.build_unconditional_branch(loop_block).unwrap();
+        self.pop_loop_block();
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            self.builder.build_unconditional_branch(loop_block).unwrap();
+        }
 
         self.builder.position_at_end(end_block);
         Value::Unit
@@ -142,7 +150,9 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
             .unwrap();
 
         self.builder.position_at_end(loop_block);
+        self.push_loop(condition_block, end_block);
         self.visit_block(&for_.body);
+        self.pop_loop_block();
         let new_value = self
             .builder
             .build_binop(
@@ -181,13 +191,29 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
             .unwrap();
 
         self.builder.position_at_end(loop_block);
+        self.push_loop(condition_block, end_block);
         self.visit_block(&while_.body);
-        self.builder
-            .build_unconditional_branch(condition_block)
-            .unwrap();
+        self.pop_loop_block();
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            self.builder
+                .build_unconditional_branch(condition_block)
+                .unwrap();
+        }
 
         self.builder.position_at_end(end_block);
 
+        Value::Unit
+    }
+
+    fn visit_break(&mut self, _span: ast::Span) -> Value<'v> {
+        let exit = self.current_loop().unwrap().1;
+        self.builder.build_unconditional_branch(exit).unwrap();
+        Value::Unit
+    }
+
+    fn visit_continue(&mut self, _span: ast::Span) -> Value<'v> {
+        let entry = self.current_loop().unwrap().0;
+        self.builder.build_unconditional_branch(entry).unwrap();
         Value::Unit
     }
 }

@@ -118,6 +118,14 @@ peg::parser! {
             p: proto_def() { parser.insert_exp(Exp::ProtoDef(p)) } /
             f: function_def() { parser.insert_exp(Exp::Function(f)) } /
             precedence!{
+                l: position!() "break" _ r: position!() {
+                    let span = parser.span(l, r);
+                    parser.insert_exp(Exp::Break(span))
+                }
+                l: position!() "continue" _ r: position!() {
+                    let span = parser.span(l, r);
+                    parser.insert_exp(Exp::Continue(span))
+                }
                 l: position!() _ "return" __ rhs: @ {
                     let span = parser.span(l, rhs.span().end());
                     parser.insert_exp(Exp::Return(Return { value: Some(rhs), span }))
@@ -331,6 +339,9 @@ peg::parser! {
 
         rule module() -> (Span, StructType)
              = s: position!() "mod" __ path: string() e: position!() {
+                 let Some(path) = parser.find_module(&path) else {
+                     panic!("Module {} does not exist", path);
+                 };
                  let Ok(file) = parser.file_table().register_file(path.clone()) else {
                      panic!("Failed to read {}!", path);
                  };
@@ -493,7 +504,7 @@ peg::parser! {
 
         rule keyword()
           = ("const" / "fn" / "extern" / "mut" / "proto" / "let" / "struct" / "mod"
-            / "if" / "while" / "loop" / "for" / "in" / "else"
+            / "if" / "while" / "loop" / "for" / "in" / "else" / "break" / "continue"
             / "i" n: digit() / "u" n: digit()) __
 
         rule string() -> String
