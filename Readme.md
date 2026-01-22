@@ -14,7 +14,7 @@ Then you can execute it:
 ./main.bin
 ```
 > [!NOTE]
-> main.cara depends on [module.cara](module.cara).
+> main.cara depends on [module.cara](module.cara), so if you want to compile it, you need to download module.cara and put it in the same directory as main.cara.
 
 ## Roadmap
 - [x] Basic syntax and ast.
