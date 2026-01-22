@@ -12,6 +12,9 @@ query = { path = "./crates/query" }
 monomorphize = { path = "./crates/monomorphize" }
 targets = { path = "./crates/targets" }
 type_infer = { path = "./crates/type_infer" }
+lint = { path = "./crates/lint" }
+symbol_table = { path = "./crates/symbol_table" }
+const_eval = { path = "./crates/const_eval" }
 anyhow = "1.0.100"
 
 [workspace]

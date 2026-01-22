@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "analyzer"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "ast",
  "lint",
@@ -90,7 +90,7 @@ checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
 name = "ast"
-version = "0.0.7"
+version = "0.0.8"
 
 [[package]]
 name = "beef"
@@ -137,7 +137,7 @@ checksum = "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510"
 
 [[package]]
 name = "carac"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "analyzer",
  "anyhow",
@@ -210,7 +210,7 @@ checksum = "c3e64b0cc0439b12df2fa678eae89a1c56a529fd067a9115f7827f1fffd22b32"
 
 [[package]]
 name = "codegen"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "bon",
  "monomorphize",
@@ -219,7 +219,7 @@ dependencies = [
 
 [[package]]
 name = "codegen_llvm"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "ast",
  "codegen",
@@ -241,7 +241,7 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
 name = "const_eval"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "ast",
  "query",
@@ -430,7 +430,7 @@ checksum = "241c42ad6aa731f04ebec52ed701d997140aba19003d402278f382df1782c942"
 
 [[package]]
 name = "lint"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -499,7 +499,7 @@ checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
 name = "monomorphize"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "ast",
  "const_eval",
@@ -521,7 +521,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "parser"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "anyhow",
  "ast",
@@ -580,7 +580,7 @@ dependencies = [
 
 [[package]]
 name = "query"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "ast",
  "bon",
@@ -689,7 +689,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "simplifier"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "ast",
  "symbol_table",
@@ -703,7 +703,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "symbol_table"
-version = "0.0.7"
+version = "0.0.8"
 
 [[package]]
 name = "syn"
@@ -724,7 +724,7 @@ checksum = "b1dd07eb858a2067e2f3c7155d54e929265c264e6f37efe3ee7a8d1b5a1dd0ba"
 
 [[package]]
 name = "targets"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "find-msvc-tools",
  "libc",
@@ -765,7 +765,7 @@ dependencies = [
 
 [[package]]
 name = "type_infer"
-version = "0.0.7"
+version = "0.0.8"
 
 [[package]]
 name = "unescaper"

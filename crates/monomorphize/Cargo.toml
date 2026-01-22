@@ -5,6 +5,6 @@ edition.workspace = true
 
 [dependencies]
 ast.workspace = true
-const_eval = { path = "../const_eval" }
+const_eval.workspace = true
 query.workspace = true
-symbol_table = { path = "../symbol_table" }
+symbol_table.workspace = true
