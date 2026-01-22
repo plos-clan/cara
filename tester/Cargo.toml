@@ -1,0 +1,11 @@
+[package]
+name = "tester"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+walkdir = "2.5.0"
+
+[dependencies.carac]
+path = "../compiler"
+artifact = "bin"

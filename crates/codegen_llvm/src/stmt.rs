@@ -141,7 +141,8 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
         self.build_conditional_branch(condition, loop_block, end_block);
 
         self.builder.position_at_end(update_block);
-        let new_value = self.builder
+        let new_value = self
+            .builder
             .build_binop(
                 InstructionOpcode::Add,
                 alloca.as_right_value(&self.builder),
@@ -149,9 +150,11 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
                 "",
             )
             .unwrap();
-        self.builder.build_store(alloca.as_ptr(), new_value).unwrap();
+        self.builder
+            .build_store(alloca.as_ptr(), new_value)
+            .unwrap();
         self.build_branch(condition_block);
-        
+
         self.builder.position_at_end(loop_block);
         self.push_loop(update_block, end_block);
         self.visit_block(&for_.body);
