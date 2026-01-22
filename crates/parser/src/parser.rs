@@ -23,7 +23,8 @@ impl Parser for CaraParser {
         ctx: &ParseContext<'_>,
         content: Arc<String>,
     ) -> anyhow::Result<StructType> {
-        cara_parser::module_root(&TokenStream::new(content)?, self, ctx).map_err(|e| e.into())
+        let token_stream = TokenStream::new(content)?;
+        cara_parser::module_root(&token_stream, &token_stream, self, ctx).map_err(|e| e.into())
     }
 }
 
@@ -35,10 +36,22 @@ macro_rules! binary_op_rule {
 }
 
 peg::parser! {
-    grammar cara_parser<'s>(pself: &CaraParser, parser: &ParseContext<'_>) for TokenStream {
+    grammar cara_parser<'s>(tokens: &TokenStream, pself: &CaraParser, parser: &ParseContext<'_>) for TokenStream {
         pub rule module_root() -> StructType
         = _ i: struct_inner() _ {
             i
+        }
+
+        rule pos() -> usize
+        = p: position!() { 
+            let len = tokens.len();
+            if len == p {
+                return match tokens.last() {
+                    Some(token) => token.1.start,
+                    None => 0,
+                };
+            }
+            tokens[p].1.start
         }
 
         rule global_item() -> GlobalItem
@@ -55,17 +68,17 @@ peg::parser! {
         }
 
         rule proto_def() -> ProtoDef
-        = l: position!() "proto" __ abi: abi_kind() _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "-" ">" _ t: expr() {t})? _ r: position!() {
+        = l: pos() "proto" __ abi: abi_kind() _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "-" ">" _ t: expr() {t})? _ r: pos() {
             ProtoDef { abi, params, return_type, span: parser.span(l, r) }
         }
 
         rule function_def() -> FunctionDef
-        = l: position!() abi: ("extern" __ a: abi_kind() {a})? _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "-" ">" _ t: expr() {t})? _ block: block() _ r: position!() {
+        = l: pos() abi: ("extern" __ a: abi_kind() {a})? _ "fn" _ "(" _ params: (param() ** ("," _)) _ ","? _ ")" return_type: (__ "-" ">" _ t: expr() {t})? _ block: block() _ r: pos() {
             FunctionDef { abi: abi.unwrap_or(Abi::Cara), params, return_type, block, span: parser.span(l, r) }
         }
 
         rule const_def() -> ConstDef
-        = l: position!() "const" __ name: identifier() _ "=" _ value: const_initial_value() _ ";" r: position!() {
+        = l: pos() "const" __ name: identifier() _ "=" _ value: const_initial_value() _ ";" r: pos() {
             ConstDef { name, initial_value: value, span: parser.span(l, r) }
         }
 
@@ -75,7 +88,7 @@ peg::parser! {
         }
 
         rule block() -> Block
-        = l: position!() _ "{" _ items: (block_item() ** _) _ return_value: expr()? _ "}" _ r: position!() {
+        = l: pos() _ "{" _ items: (block_item() ** _) _ return_value: expr()? _ "}" _ r: pos() {
             Block { items, return_value, span: parser.span(l, r) }
         }
 
@@ -87,9 +100,9 @@ peg::parser! {
         }
 
         rule var_def() -> VarDef
-        = l: position!() _ "let" __ mutable: ("mut"?) _ name: identifier() _
+        = l: pos() _ "let" __ mutable: ("mut"?) _ name: identifier() _
                 var_type: (":" _ t: expr() {t} )? _
-                "=" _ value: expr() _ ";" r: position!() {
+                "=" _ value: expr() _ ";" r: pos() {
             VarDef { name, var_type, initial_value: value, mutable: mutable.is_some(), span: parser.span(l, r) }
         }
 
@@ -106,12 +119,12 @@ peg::parser! {
         }
 
         rule inline_asm() -> InlineAsm
-        = l: position!() _ "asm" _ "{" _ asm: (string() ** ("," _)) _ ","? _ "}" _ r: position!() {
+        = l: pos() _ "asm" _ "{" _ asm: (string() ** ("," _)) _ ","? _ "}" _ r: pos() {
             InlineAsm { asm, span: parser.span(l, r) }
         }
 
         rule param() -> Param
-        = l: position!() name: identifier() _ ":" _ ty: expr() r: position!() {
+        = l: pos() name: identifier() _ ":" _ ty: expr() r: pos() {
             Param { name, param_type: ty, span: parser.span(l, r) }
         }
 
@@ -119,19 +132,19 @@ peg::parser! {
             p: proto_def() { parser.insert_exp(Exp::ProtoDef(p)) } /
             f: function_def() { parser.insert_exp(Exp::Function(f)) } /
             precedence!{
-                l: position!() "break" _ r: position!() {
+                l: pos() "break" _ r: pos() {
                     let span = parser.span(l, r);
                     parser.insert_exp(Exp::Break(span))
                 }
-                l: position!() "continue" _ r: position!() {
+                l: pos() "continue" _ r: pos() {
                     let span = parser.span(l, r);
                     parser.insert_exp(Exp::Continue(span))
                 }
-                l: position!() _ "return" __ rhs: @ {
+                l: pos() _ "return" __ rhs: @ {
                     let span = parser.span(l, rhs.span().end());
                     parser.insert_exp(Exp::Return(Return { value: Some(rhs), span }))
                 }
-                l: position!() _ "return" __ ";" {
+                l: pos() _ "return" __ ";" {
                     let span = parser.span(l, l);
                     parser.insert_exp(Exp::Return(Return { value: None, span }))
                 }
@@ -183,19 +196,19 @@ peg::parser! {
                     binary_op_rule!(parser, l, r, Mod)
                 }
                 --
-                s: position!() "+" _ r: (@) {
+                s: pos() "+" _ r: (@) {
                     let span = parser.span(s, r.span().end());
                     parser.insert_exp(Exp::Unary(UnaryOp::Pos, r, span))
                 }
-                s: position!() "-" _ r: (@) {
+                s: pos() "-" _ r: (@) {
                     let span = parser.span(s, r.span().end());
                     parser.insert_exp(Exp::Unary(UnaryOp::Neg, r, span))
                 }
-                s: position!() "!" _ r: (@) {
+                s: pos() "!" _ r: (@) {
                     let span = parser.span(s, r.span().end());
                     parser.insert_exp(Exp::Unary(UnaryOp::Not, r, span))
                 }
-                s: position!() "*" _ r: (@) {
+                s: pos() "*" _ r: (@) {
                     let span = parser.span(s, r.span().end());
                     parser.insert_exp(Exp::Unary(UnaryOp::Ptr, r, span))
                 }
@@ -217,14 +230,14 @@ peg::parser! {
                     parser.insert_exp(Exp::Index(Index { exp: l, index: r, span }))
                 }
                 --
-                l: position!() "&" _ e: (@) {
+                l: pos() "&" _ e: (@) {
                     let span = parser.span(l, e.span().end());
                     parser.insert_exp(Exp::GetAddr(GetAddr { exp: e, span }))
                 }
                 --
                 t: @ _ "{" _
                     fields: ((name: identifier() _ ":" _ value: expr() {(name, value)}) ** ("," _)) ","?
-                _ "}" r: position!() {
+                _ "}" r: pos() {
                     let span = parser.span(t.span().start(), r);
                     parser.insert_exp(Exp::Structure(Structure {
                         ty: t,
@@ -233,14 +246,14 @@ peg::parser! {
                     }))
                 }
                 --
-                l: @ "." "*" r: position!() {
+                l: @ "." "*" r: pos() {
                     let span = parser.span(l.span().start(), r);
                     parser.insert_exp(Exp::Deref(Deref {
                         exp: l,
                         span
                     }))
                 }
-                l: @ "." n: identifier() r: position!() {
+                l: @ "." n: identifier() r: pos() {
                     let span = parser.span(l.span().start(), r);
                     parser.insert_exp(Exp::FieldAccess(FieldAccess {
                         lhs: l,
@@ -249,7 +262,7 @@ peg::parser! {
                     }))
                 }
                 --
-                l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: position!() {
+                l: (@) _ "(" _ args: (expr() ** ("," _)) ","? _ ")" r: pos() {
                     let span = parser.span(l.span().start(), r);
                     parser.insert_exp(Exp::Call(Call {
                         func: l,
@@ -267,7 +280,7 @@ peg::parser! {
                 l: loop_exp() { parser.insert_exp(Exp::Loop(l)) }
                 w: while_exp() { parser.insert_exp(Exp::While(w)) }
                 i: if_exp() { parser.insert_exp(Exp::IfExp(i)) }
-                l: position!() "(" _ ")" r: position!() {
+                l: pos() "(" _ ")" r: pos() {
                     let span = parser.span(l, r);
                     parser.insert_exp(Exp::Unit(span))
                 }
@@ -282,9 +295,9 @@ peg::parser! {
             }
 
         rule for_exp() -> For
-            = l: position!() "for" __ v: identifier() _ "in" _
+            = l: pos() "for" __ v: identifier() _ "in" _
                 "(" _ s: expr() _ "," _ e: expr() _ step: ("," _ step: expr() {step})? _ ","? _ ")" _
-                b: block() r: position!() {
+                b: block() r: pos() {
                 For {
                     var: v,
                     start: s,
@@ -296,7 +309,7 @@ peg::parser! {
             }
 
         rule loop_exp() -> Loop
-            = l: position!() "loop" _ b: block() r: position!() {
+            = l: pos() "loop" _ b: block() r: pos() {
                 Loop {
                     body: b,
                     span: parser.span(l, r)
@@ -304,7 +317,7 @@ peg::parser! {
             }
 
         rule while_exp() -> While
-            = l: position!() "while" __ c: expr() _ b: block() r: position!() {
+            = l: pos() "while" __ c: expr() _ b: block() r: pos() {
                 While {
                     condition: c,
                     body: b,
@@ -313,13 +326,13 @@ peg::parser! {
             }
 
         rule array() -> Array
-            = l: position!() "[" _ values: (expr() ** ("," _)) _ "]" r: position!() {
+            = l: pos() "[" _ values: (expr() ** ("," _)) _ "]" r: pos() {
                 Array::List(values, parser.span(l, r))
             }
 
         rule if_exp() -> IfExp
-             = l: position!() "if" __ c: expr() _ t: block() _
-                e: ("else" _ b: block() {b})? r: position!() {
+             = l: pos() "if" __ c: expr() _ t: block() _
+                e: ("else" _ b: block() {b})? r: pos() {
                 IfExp {
                     condition: c,
                     then_branch: t,
@@ -327,8 +340,8 @@ peg::parser! {
                     else_if: None,
                     span: parser.span(l, r)
                 }
-            } / l: position!() "if" __ c: expr() _ t: block() _
-                i: ("else" __ i: if_exp() {i})? r: position!() {
+            } / l: pos() "if" __ c: expr() _ t: block() _
+                i: ("else" __ i: if_exp() {i})? r: pos() {
                 IfExp {
                     condition: c,
                     then_branch: t,
@@ -339,7 +352,7 @@ peg::parser! {
             }
 
         rule module() -> (Span, StructType)
-             = s: position!() "mod" __ path: string() e: position!() {
+             = s: pos() "mod" __ path: string() e: pos() {
                  let span = parser.span(s, e);
                  let Some(path) = parser.find_module(&path) else {
                      LintDumper::new(parser.file_table()).lints([(format!("Module '{}' not found.", path), span)].iter()).dump();
@@ -356,12 +369,12 @@ peg::parser! {
              }
 
         rule string_wrapper() -> Exp
-             = s: position!() string: string() e: position!() {
+             = s: pos() string: string() e: pos() {
             Exp::Str(string, parser.span(s, e))
         }
 
         rule var() -> Var
-              = s: position!() p: path() e: position!() {
+              = s: pos() p: path() e: pos() {
             Var { path: p, span: parser.span(s, e) }
         }
 
@@ -426,7 +439,7 @@ peg::parser! {
             }}
 
         rule path() -> Path
-            = s: position!() path:(identifier() ++ (":" ":")) e: position!() {
+            = s: pos() path:(identifier() ++ (":" ":")) e: pos() {
                 Path{
                     path,
                     span: parser.span(s, e)
@@ -479,10 +492,10 @@ peg::parser! {
             }
 
         rule struct_inner() -> StructType
-             = l: position!() _
+             = l: pos() _
              fields: (name: identifier() _ ":" _ ty: expr() { (name, ty) }) ** ("," _) ","? _
              items: (global_item() ** _) _
-             r: position!() {
+             r: pos() {
                  StructType {
                      fields: fields.into_iter().collect(),
                      members: items,
@@ -491,7 +504,7 @@ peg::parser! {
              }
 
         rule type_() -> Type
-            = s: position!() kind: type_enum() e: position!() {
+            = s: pos() kind: type_enum() e: pos() {
             Type {
                 kind,
                 span: parser.span(s, e),
