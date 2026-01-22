@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::{process::exit, sync::Arc};
 
 use ast::*;
+use lint::LintDumper;
 use peg::RuleResult;
 
 use crate::lexer::{Token, TokenStream};
@@ -339,11 +340,14 @@ peg::parser! {
 
         rule module() -> (Span, StructType)
              = s: position!() "mod" __ path: string() e: position!() {
+                 let span = parser.span(s, e);
                  let Some(path) = parser.find_module(&path) else {
-                     panic!("Module {} does not exist", path);
+                     LintDumper::new(parser.file_table()).lints([(format!("Module '{}' not found.", path), span)].iter()).dump();
+                     exit(-1);
                  };
                  let Ok(file) = parser.file_table().register_file(path.clone()) else {
-                     panic!("Failed to read {}!", path);
+                     LintDumper::new(parser.file_table()).lints([(format!("Failed to read '{}'.", path), span)].iter()).dump();
+                     exit(-1);
                  };
                  (
                      parser.span(s, e),

@@ -243,6 +243,8 @@ impl LLVMCodegenResult {
         target: ::targets::spec::Target,
         backend_options: BackendOptions,
     ) -> Self {
+        module.verify().unwrap();
+
         let BackendOptions {
             code_model,
             optimize_level,

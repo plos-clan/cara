@@ -63,7 +63,13 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
 
         self.builder.position_at_end(then_block);
         let then_value = self.visit_block(&if_exp.then_branch);
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self
+            .builder
+            .get_insert_block()
+            .unwrap()
+            .get_terminator()
+            .is_none()
+        {
             self.builder.build_unconditional_branch(end_block).unwrap();
         }
 
@@ -77,7 +83,13 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
         } else {
             (false, Value::Unit)
         };
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self
+            .builder
+            .get_insert_block()
+            .unwrap()
+            .get_terminator()
+            .is_none()
+        {
             self.builder.build_unconditional_branch(end_block).unwrap();
         }
 
@@ -106,7 +118,13 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
         self.push_loop(loop_block, end_block);
         self.visit_block(&loop_.body);
         self.pop_loop_block();
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self
+            .builder
+            .get_insert_block()
+            .unwrap()
+            .get_terminator()
+            .is_none()
+        {
             self.builder.build_unconditional_branch(loop_block).unwrap();
         }
 
@@ -194,7 +212,13 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
         self.push_loop(condition_block, end_block);
         self.visit_block(&while_.body);
         self.pop_loop_block();
-        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+        if self
+            .builder
+            .get_insert_block()
+            .unwrap()
+            .get_terminator()
+            .is_none()
+        {
             self.builder
                 .build_unconditional_branch(condition_block)
                 .unwrap();

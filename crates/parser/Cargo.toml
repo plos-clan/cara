@@ -10,6 +10,7 @@ anyhow.workspace = true
 logos = "0.16.0"
 line-column = "0.3.1"
 unescaper = "0.1.8"
+lint = { version = "0.0.7", path = "../lint" }
 
 [features]
 trace = ["peg/trace"]

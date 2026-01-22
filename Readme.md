@@ -4,7 +4,7 @@ Cara is a kind of simple, statically typed programming language, inspired by Rus
 Currently in development.
 
 ## Example
-[main.cara](main.cara)
+[main.cara](main.cara) \
 You can build this with the following command:
 ``` sh
 carac build main.cara -o main.bin

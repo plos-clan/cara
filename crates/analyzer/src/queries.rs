@@ -4,9 +4,10 @@ use ast::{
     ConstExp, ConstInitialValue, Exp, FileTable, Span,
     visitor::{BlockVisitor, ExpVisitor},
 };
+use lint::LintDumper;
 use query::{DefId, Provider, QueryContext};
 
-use crate::{AnalyzerContext, DiagnosticDumper, Error, Symbol, Type, Value, Warning};
+use crate::{AnalyzerContext, Error, Symbol, Type, Value, Warning};
 
 pub static CHECK_CONST_DEF: LazyLock<Provider<DefId, AnalyzeResult>> =
     LazyLock::new(|| Provider::new(check_const_def));
@@ -38,10 +39,10 @@ impl AnalyzeResult {
             self.warnings.extend(warnings);
         }
 
-        let mut dumper = DiagnosticDumper::new(file_table);
+        let mut dumper = LintDumper::new(file_table);
 
-        dumper.add_iter(self.errors.iter());
-        dumper.add_iter(self.warnings.iter());
+        dumper.lints(self.errors.iter());
+        dumper.lints(self.warnings.iter());
 
         dumper.dump();
     }

@@ -15,9 +15,8 @@ dependencies = [
 name = "analyzer"
 version = "0.0.7"
 dependencies = [
- "annotate-snippets",
- "anstream",
  "ast",
+ "lint",
  "query",
  "symbol_table",
  "thiserror",
@@ -430,6 +429,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "241c42ad6aa731f04ebec52ed701d997140aba19003d402278f382df1782c942"
 
 [[package]]
+name = "lint"
+version = "0.0.7"
+dependencies = [
+ "annotate-snippets",
+ "anstream",
+ "ast",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -518,6 +526,7 @@ dependencies = [
  "anyhow",
  "ast",
  "line-column",
+ "lint",
  "logos",
  "peg",
  "unescaper",
