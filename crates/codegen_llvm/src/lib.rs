@@ -20,6 +20,7 @@ use inkwell::{
     targets::{
         CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
     },
+    values::IntValue,
 };
 use monomorphize::CodegenItem;
 use query::QueryContext;
@@ -218,15 +219,9 @@ impl LLVMBackend {
         {
             visitor_ctx.builder.build_return(Some(&value)).unwrap();
         }
-        if visitor_ctx
-            .builder
-            .get_insert_block()
-            .unwrap()
-            .get_terminator()
-            .is_none()
-        {
-            visitor_ctx.builder.build_return(None).unwrap();
-        }
+        visitor_ctx.build_terminator(&visitor_ctx.builder, |builder| {
+            builder.build_return(None).unwrap();
+        });
     }
 }
 
@@ -243,7 +238,10 @@ impl LLVMCodegenResult {
         target: ::targets::spec::Target,
         backend_options: BackendOptions,
     ) -> Self {
-        module.verify().unwrap();
+        if let Err(err) = module.verify() {
+            module.print_to_stderr();
+            panic!("LLVM module verification failed: {}", err);
+        }
 
         let BackendOptions {
             code_model,
@@ -389,5 +387,38 @@ impl<'v> VisitorCtx<'v> {
 
     fn pop_loop_block(&mut self) {
         self.loop_blocks.pop();
+    }
+
+    fn build_terminator<F>(&self, builder: &Builder<'v>, f: F)
+    where
+        F: FnOnce(&Builder<'v>),
+    {
+        if builder
+            .get_insert_block()
+            .unwrap()
+            .get_terminator()
+            .is_none()
+        {
+            f(builder);
+        }
+    }
+
+    fn build_branch(&self, bb: BasicBlock<'v>) {
+        self.build_terminator(&self.builder, |builder| {
+            builder.build_unconditional_branch(bb).unwrap();
+        });
+    }
+
+    fn build_conditional_branch(
+        &self,
+        cond: IntValue<'v>,
+        then_bb: BasicBlock<'v>,
+        else_bb: BasicBlock<'v>,
+    ) {
+        self.build_terminator(&self.builder, |builder| {
+            builder
+                .build_conditional_branch(cond, then_bb, else_bb)
+                .unwrap();
+        });
     }
 }

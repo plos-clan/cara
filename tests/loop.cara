@@ -3,12 +3,11 @@ const io = mod "utils/io.cara";
 const main = extern C[main] fn() -> i32 {
     let mut i = 0;
 
-    while i < 10 {
-        io::print_num(i as i64);
-        if i > 5 + 1 {
-            break;
+    for i in (0, 10) {
+        if i == 5 + 1 {
+            continue;
         };
-        i = i + 1;
+        io::print_num(i as i64);
     };
     0
 };

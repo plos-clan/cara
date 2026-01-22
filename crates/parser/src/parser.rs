@@ -43,7 +43,7 @@ peg::parser! {
         }
 
         rule pos() -> usize
-        = p: position!() { 
+        = p: position!() {
             let len = tokens.len();
             if len == p {
                 return match tokens.last() {
