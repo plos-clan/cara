@@ -3,6 +3,13 @@
 Cara is a kind of simple, statically typed programming language, inspired by Rust and Zig.
 Currently in development.
 
+## Install
+
+Download the latest release from [GitHub](https://github.com/plos-clan/cara/releases). \
+For Windows(x86_64 only), download xxx-x86_64-pc-windows-msvc.zip. \
+For Mac(Aarch64 only), download xxx-aarch64-apple-darwin.tar.gz. \
+For Linux(x86_64 only), download xxx-x86_64-unknown-linux-gnu.tar.gz.
+
 ## Example
 [main.cara](main.cara) \
 You can build this with the following command:
