@@ -6,8 +6,8 @@ const main = extern C[main] fn() -> i32 {
     for i in (0, 10) {
         if i == 5 + 1 {
             continue;
-        };
+        }
         io::print_num(i as i64);
-    };
+    }
     0
 };

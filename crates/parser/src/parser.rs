@@ -107,15 +107,12 @@ peg::parser! {
         }
 
         rule statement() -> Statement
-        = s: statement_impl() ";" {
-            s
-        }
-
-        rule statement_impl() -> Statement
-        = i: inline_asm() {
+        = i: inline_asm() ";" {
             Statement::InlineAsm(i)
-        } / e: expr() {
+        } / e: expr() ";" {
             Statement::Exp(e)
+        } / b: block_exp() {
+            Statement::Exp(b)
         }
 
         rule inline_asm() -> InlineAsm
@@ -271,15 +268,12 @@ peg::parser! {
                     }))
                 }
                 --
+                b: block_exp() { b }
                 m: module() {
                     let (span, m) = m;
                     parser.insert_exp(Exp::Type(Type { kind: TypeEnum::Structure(m), span }))
                 }
                 t: type_() { parser.insert_exp(Exp::Type(t)) }
-                f: for_exp() { parser.insert_exp(Exp::For(f)) }
-                l: loop_exp() { parser.insert_exp(Exp::Loop(l)) }
-                w: while_exp() { parser.insert_exp(Exp::While(w)) }
-                i: if_exp() { parser.insert_exp(Exp::IfExp(i)) }
                 l: pos() "(" _ ")" r: pos() {
                     let span = parser.span(l, r);
                     parser.insert_exp(Exp::Unit(span))
@@ -290,9 +284,16 @@ peg::parser! {
                 n: number() { parser.insert_exp(n) }
                 s: string_wrapper() { parser.insert_exp(s) }
                 v: var() { parser.insert_exp(Exp::Var(v)) }
-                b: block() { parser.insert_exp(Exp::Block(b)) }
                 a: array() { parser.insert_exp(Exp::Array(a)) }
             }
+        
+        rule block_exp() -> ExpId
+            =   
+            f: for_exp() { parser.insert_exp(Exp::For(f)) } /
+            l: loop_exp() { parser.insert_exp(Exp::Loop(l)) } /
+            w: while_exp() { parser.insert_exp(Exp::While(w)) } /
+            i: if_exp() { parser.insert_exp(Exp::IfExp(i)) } /
+            b: block() { parser.insert_exp(Exp::Block(b)) }
 
         rule for_exp() -> For
             = l: pos() "for" __ v: identifier() _ "in" _
