@@ -21,8 +21,7 @@ impl<'v> StatementVisitor<Value<'v>> for VisitorCtx<'v> {
             return Value::Unit;
         }
 
-        let ptr = lhs.as_ptr();
-        self.builder.build_store(ptr, rhs).unwrap();
+        rhs.build_store(lhs, &self.builder);
 
         Value::Unit
     }

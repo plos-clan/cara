@@ -20,7 +20,7 @@ use inkwell::{
     targets::{
         CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
     },
-    values::IntValue,
+    values::{AnyValue, IntValue},
 };
 use monomorphize::CodegenItem;
 use query::QueryContext;
@@ -202,12 +202,11 @@ impl LLVMBackend {
 
         for (id, param) in params.iter().enumerate() {
             let ty = get_llvm_type_from_exp(ctx.clone(), param.param_type);
+            let param_value = function.get_nth_param(id as u32).unwrap();
+            let param_value = Value::new_from(param_value.as_any_value_enum(), ty.clone());
 
             let ptr = visitor_ctx.create_entry_bb_alloca(&param.name, ty);
-            visitor_ctx
-                .builder
-                .build_store(ptr.as_ptr(), function.get_nth_param(id as u32).unwrap())
-                .unwrap();
+            param_value.build_store(ptr.clone(), &visitor_ctx.builder);
 
             visitor_ctx
                 .symbols
