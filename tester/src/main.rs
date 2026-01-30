@@ -11,7 +11,6 @@ fn main() {
             if entry.file_type().is_dir() {
                 continue;
             }
-            println!("testing {}", entry.file_name().display());
             Command::new(carac_path)
                 .arg("build")
                 .arg(entry.path())

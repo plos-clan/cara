@@ -1,0 +1,8 @@
+const io = mod "utils/io.cara";
+
+const main = extern C[main] fn() -> i32 {
+    let a = fn() -> i32 {
+        42
+    };
+    0
+};

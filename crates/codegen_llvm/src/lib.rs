@@ -214,7 +214,8 @@ impl LLVMBackend {
                 .pre_push(Symbol::Var(param.name.clone(), ptr));
         }
 
-        if let Some(value) = visitor_ctx.visit_block(block)
+        let result = visitor_ctx.visit_block(block);
+        if let Some(value) = result
             && !matches!(value, Value::Unit)
         {
             visitor_ctx.builder.build_return(Some(&value)).unwrap();
@@ -368,11 +369,8 @@ impl<'v> VisitorCtx<'v> {
 
     fn create_entry_bb_alloca_with_init(&self, name: &str, init: Value<'v>) -> Value<'v> {
         let alloca = self.create_entry_bb_alloca(name, init.type_());
-        let Value::Alloca { value: ptr, .. } = alloca else {
-            unreachable!()
-        };
         if !init.is_unit() {
-            init.init_alloca(ptr, &self.builder);
+            init.build_store(alloca.clone(), &self.builder);
         }
         alloca
     }

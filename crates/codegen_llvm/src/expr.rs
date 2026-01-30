@@ -294,11 +294,11 @@ impl<'v> ExpVisitor<Value<'v>> for VisitorCtx<'v> {
         for id in 0..field_ids.len() {
             let name = field_ids[&id].clone();
             let field_value = self.visit_right_value(structure.fields[&name]);
-            field_values.push(field_value.as_basic_value_enum());
+            field_values.push(field_value);
         }
 
         Value::Structure {
-            value: LLVM_CONTEXT.const_struct(&field_values, false),
+            value: field_values,
             ty,
         }
     }
@@ -337,14 +337,12 @@ impl<'v> VisitorCtx<'v> {
                 let mut field_values = Vec::new();
                 for id in 0..field_ids.len() {
                     let name = field_ids.get(&id).unwrap();
-                    let value = self
-                        .const_value_to_llvm_value(fields.get(name).unwrap())
-                        .as_basic_value_enum();
+                    let value = self.const_value_to_llvm_value(fields.get(name).unwrap());
                     field_values.push(value);
                 }
 
                 Value::Structure {
-                    value: LLVM_CONTEXT.const_struct(&field_values, false),
+                    value: field_values,
                     ty,
                 }
             }

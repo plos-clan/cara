@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ast::{Array, Span, StructType, TypeEnum, visitor::ExpVisitor};
 use const_eval::{ValueKind, queries::CONST_EVAL_PROVIDER};
 
@@ -38,12 +40,14 @@ impl ExpVisitor<()> for MonomorphizeContext {
         self.visit_left_value(deref.exp);
     }
 
-    fn visit_proto(&mut self, _proto_def: &ast::ProtoDef) {
-        unreachable!()
+    fn visit_proto(&mut self, proto_def: &ast::ProtoDef) {
+        self.required_items
+            .insert(CodegenItem::Proto(Arc::new(proto_def.clone())));
     }
 
-    fn visit_function(&mut self, _func: &ast::FunctionDef) {
-        unreachable!()
+    fn visit_function(&mut self, func: &ast::FunctionDef) {
+        self.required_items
+            .insert(CodegenItem::Func(Arc::new(func.clone())));
     }
 
     fn visit_index(&mut self, index: &ast::Index) {

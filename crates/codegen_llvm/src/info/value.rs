@@ -2,7 +2,7 @@ use inkwell::{
     builder::Builder,
     values::{
         AnyValue, AnyValueEnum, ArrayValue, AsValueRef, BasicMetadataValueEnum, BasicValue,
-        FunctionValue, IntValue, PointerValue, StructValue,
+        FunctionValue, IntValue, PointerValue,
     },
 };
 
@@ -25,7 +25,7 @@ pub enum Value<'v> {
         value_ty: TypeKind<'v>,
     },
     Structure {
-        value: StructValue<'v>,
+        value: Vec<Self>,
         ty: TypeKind<'v>,
     },
     Type(TypeKind<'v>),
@@ -129,38 +129,25 @@ impl<'v> Value<'v> {
                 value: v,
                 ty: ty.clone(),
             },
-            AnyValueEnum::StructValue(v) => Value::Structure {
-                value: v,
-                ty: ty.clone(),
-            },
             _ => panic!("unexpected: {}", value),
         }
     }
 }
 
 impl<'v> Value<'v> {
-    pub fn init_alloca(&self, alloca: PointerValue<'v>, builder: &Builder<'v>) {
+    pub fn build_store(&self, ptr: Self, builder: &Builder<'v>) {
+        let pointee = ptr.type_().derefed();
+        let ptr = ptr.as_ptr();
         match self {
-            Value::Int(v) => _ = builder.build_store(alloca, *v).unwrap(),
-            Value::Pointer { value, .. } => _ = builder.build_store(alloca, *value).unwrap(),
-            Value::Array { value, .. } => _ = builder.build_store(alloca, *value).unwrap(),
-            Value::Structure { value, ty } => {
-                let TypeKind::Structure { field_types, .. } = ty else {
-                    unreachable!()
-                };
-                for (field_id, field_value) in value.get_fields().enumerate() {
-                    let ty = field_types[field_id].clone();
-                    let ptr = unsafe {
-                        builder
-                            .build_in_bounds_gep(
-                                ty,
-                                alloca,
-                                &[TypeKind::new_int(32).const_int(field_id as i64).as_int()],
-                                "",
-                            )
-                            .unwrap()
-                    };
-                    builder.build_store(ptr, field_value).unwrap();
+            Value::Int(v) => _ = builder.build_store(ptr, *v).unwrap(),
+            Value::Pointer { value, .. } => _ = builder.build_store(ptr, *value).unwrap(),
+            Value::Array { value, .. } => _ = builder.build_store(ptr, *value).unwrap(),
+            Value::Structure { value, .. } => {
+                for (field_id, field_value) in value.iter().enumerate() {
+                    let ptr = builder
+                        .build_struct_gep(pointee.clone(), ptr, field_id as u32, "")
+                        .unwrap();
+                    builder.build_store(ptr, field_value.clone()).unwrap();
                 }
             }
             _ => unreachable!(),
@@ -174,7 +161,6 @@ impl<'v> From<Value<'v>> for BasicMetadataValueEnum<'v> {
             Value::Int(v) => v.into(),
             Value::Pointer { value, .. } => value.into(),
             Value::Array { value, .. } => value.into(),
-            Value::Structure { value, .. } => value.into(),
             _ => panic!("Creating BasicMetadataValueEnum from {:?}", value),
         }
     }
@@ -189,7 +175,6 @@ unsafe impl<'v> AsValueRef for Value<'v> {
             Value::Alloca { value, .. } => value.as_value_ref(),
             Value::Unit => unreachable!(),
             Value::Array { value, .. } => value.as_value_ref(),
-            Value::Structure { value, .. } => value.as_value_ref(),
             _ => unreachable!(),
         }
     }

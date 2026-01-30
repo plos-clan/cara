@@ -89,14 +89,27 @@ peg::parser! {
 
         rule block() -> Block
         = l: pos() _ "{" _ items: (block_item() ** _) _ return_value: expr()? _ "}" _ r: pos() {
+            let mut items = items;
+            let mut return_value = return_value;
+            if let Some((no_semi, item)) = items.pop() {
+                if no_semi {
+                    let BlockItem::Statement(Statement::Exp(exp)) = item else {
+                        unreachable!()
+                    };
+                    return_value = Some(exp);
+                } else {
+                    items.push((no_semi, item));
+                }
+            }
+            let items = items.into_iter().map(|(_, item)| item).collect();
             Block { items, return_value, span: parser.span(l, r) }
         }
 
-        rule block_item() -> BlockItem
+        rule block_item() -> (bool, BlockItem)
         = v: var_def() {
-            BlockItem::VarDef(v)
+            (false, BlockItem::VarDef(v))
         } / s: statement() {
-            BlockItem::Statement(s)
+            (s.0, BlockItem::Statement(s.1))
         }
 
         rule var_def() -> VarDef
@@ -106,13 +119,13 @@ peg::parser! {
             VarDef { name, var_type, initial_value: value, mutable: mutable.is_some(), span: parser.span(l, r) }
         }
 
-        rule statement() -> Statement
+        rule statement() -> (bool, Statement)
         = i: inline_asm() ";" {
-            Statement::InlineAsm(i)
+            (false, Statement::InlineAsm(i))
         } / e: expr() ";" {
-            Statement::Exp(e)
+            (false, Statement::Exp(e))
         } / b: block_exp() {
-            Statement::Exp(b)
+            (true, Statement::Exp(b))
         }
 
         rule inline_asm() -> InlineAsm
@@ -286,9 +299,9 @@ peg::parser! {
                 v: var() { parser.insert_exp(Exp::Var(v)) }
                 a: array() { parser.insert_exp(Exp::Array(a)) }
             }
-        
+
         rule block_exp() -> ExpId
-            =   
+            =
             f: for_exp() { parser.insert_exp(Exp::For(f)) } /
             l: loop_exp() { parser.insert_exp(Exp::Loop(l)) } /
             w: while_exp() { parser.insert_exp(Exp::While(w)) } /

@@ -23,6 +23,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "analyzer2"
+version = "0.0.8"
+dependencies = [
+ "ast",
+ "symbol_table",
+ "thiserror",
+]
+
+[[package]]
 name = "annotate-snippets"
 version = "0.12.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
