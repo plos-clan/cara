@@ -20,6 +20,14 @@ Then you can execute it:
 ``` sh
 ./main.bin
 ```
+And you need to input a number, let's say is `n`. \
+Then main.cara will give you the following output:
+```
+fib(n)
+n
+0
+```
+Where fib(n) is the nth fibonacci number.
 > [!NOTE]
 > main.cara depends on [module.cara](module.cara), so if you want to compile it, you need to download module.cara and put it in the same directory as main.cara.
 
